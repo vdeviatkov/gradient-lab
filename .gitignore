@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+dist/
+
+# CMake / C++
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+CTestTestfile.cmake
+Testing/
+compile_commands.json
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+
+# IDEs and operating systems
+.idea/
+.vscode/
+.codex/
+.agents/
+.DS_Store
+Thumbs.db
+
+# Local data and generated artifacts
+data/
+*.pt
+*.pth
+*.onnx
+results/figures/*
+!results/figures/README.md
+results/benchmarks/*
+!results/benchmarks/README.md

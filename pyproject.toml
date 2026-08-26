@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ml-from-scratch-cpp-python"
+version = "0.1.0"
+description = "Machine-learning algorithms implemented from scratch across Python and C++."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Vladyslav Deviatkov" }]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.6",
+]
+numpy = ["numpy>=2.0"]
+pytorch = [
+  "torch>=2.3",
+  "torchvision>=0.18",
+]
+plotting = ["matplotlib>=3.9"]
+
+[project.scripts]
+ml-perceptron-logic-gates = "ml_scratch.pure.perceptron_experiment:main"
+
+[tool.setuptools.packages.find]
+where = ["src/python"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests/python"]
+pythonpath = ["src/python"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src/python", "tests/python"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
