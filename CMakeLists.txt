@@ -7,7 +7,13 @@ project(
     LANGUAGES CXX
 )
 
-add_library(ml_scratch_cpp STATIC src/cpp/src/project_info.cpp)
+add_library(
+    ml_scratch_cpp STATIC
+    src/cpp/src/logic_gates.cpp
+    src/cpp/src/perceptron.cpp
+    src/cpp/src/project_info.cpp
+    src/cpp/src/xor_mlp.cpp
+)
 target_include_directories(
     ml_scratch_cpp
     PUBLIC
@@ -15,15 +21,33 @@ target_include_directories(
 )
 target_compile_features(ml_scratch_cpp PUBLIC cxx_std_20)
 
-if(MSVC)
-    target_compile_options(ml_scratch_cpp PRIVATE /W4 /permissive-)
-else()
-    target_compile_options(ml_scratch_cpp PRIVATE -Wall -Wextra -Wpedantic)
-endif()
+function(enable_project_warnings target_name)
+    if(MSVC)
+        target_compile_options(${target_name} PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(${target_name} PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endfunction()
+
+enable_project_warnings(ml_scratch_cpp)
+
+add_executable(cpp_perceptron_logic_gates experiments/01_perceptron_logic_gates/cpp_main.cpp)
+target_link_libraries(cpp_perceptron_logic_gates PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_perceptron_logic_gates)
+
+add_executable(cpp_xor_mlp experiments/02_xor_mlp/cpp_main.cpp)
+target_link_libraries(cpp_xor_mlp PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_xor_mlp)
 
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
     target_link_libraries(cpp_smoke_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_smoke_test)
     add_test(NAME cpp_smoke_test COMMAND cpp_smoke_test)
+
+    add_executable(cpp_logic_models_test tests/cpp/logic_models_test.cpp)
+    target_link_libraries(cpp_logic_models_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_logic_models_test)
+    add_test(NAME cpp_logic_models_test COMMAND cpp_logic_models_test)
 endif()

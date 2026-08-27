@@ -23,9 +23,9 @@ meaningful differences.
 
 | Milestone | Pure Python | NumPy | PyTorch | C++ |
 |---|---:|---:|---:|---:|
-| Perceptron: AND / OR | ✅ Complete | Planned | Planned | Planned |
-| Perceptron: XOR limitation | ✅ Demonstrated | Planned | Planned | Planned |
-| Two-layer MLP: XOR | Planned | Planned | Planned | Planned |
+| Perceptron: AND / OR | ✅ Complete | Planned | Planned | ✅ Complete |
+| Perceptron: XOR limitation | ✅ Demonstrated | Planned | Planned | ✅ Demonstrated |
+| Two-layer MLP: XOR | Planned | Planned | Planned | ✅ Complete |
 | Softmax regression: MNIST | Planned | Planned | Planned | Planned |
 | MLP / CNN: MNIST | Planned | Planned | Planned | Planned |
 | Optimizer and implementation benchmarks | Planned | Planned | Planned | Planned |
@@ -54,7 +54,9 @@ python -m pip install -e ".[pytorch]"
 python -m pip install -e ".[plotting]"
 ```
 
-## Current experiment: a perceptron and logic gates
+## Current experiments
+
+### A perceptron and logic gates
 
 The first experiment trains a single-layer binary perceptron on the complete truth tables for
 AND, OR, and XOR. The implementation uses deterministic seeded initialization and the classic
@@ -83,6 +85,29 @@ Run the source-level experiment wrapper after installing the project with:
 python experiments/01_perceptron_logic_gates/run.py
 ```
 
+The equivalent C++ experiment is built as `cpp_perceptron_logic_gates`. Its dataset, update rule,
+stopping condition, deterministic seed, and verification criteria mirror the pure-Python version.
+
+### A two-layer MLP for XOR
+
+The C++ milestone continues from the perceptron's expected XOR failure with a `2 → 4 → 1` network:
+
+- two inputs;
+- one hidden layer with four tanh units;
+- one sigmoid output;
+- binary cross-entropy loss; and
+- full-batch gradient descent with explicitly derived gradients.
+
+“Two-layer” counts the two trainable affine transformations (input-to-hidden and
+hidden-to-output). The hidden nonlinearities allow the network to form multiple decision
+boundaries, so it can represent XOR. Training is considered converged only when all four
+predictions are correct and the measured loss reaches the configured threshold. See
+[the MLP mathematics](docs/mathematics/xor_mlp.md) for the forward and backward equations.
+
+The implementation contains the gradients needed for this concrete network. Roadmap milestone 3
+will turn that focused derivation into a more general backpropagation design and verify its
+gradients numerically.
+
 ## Testing and quality checks
 
 ```bash
@@ -90,19 +115,23 @@ pytest
 ruff check .
 ```
 
-Tests cover the truth-table datasets, predictions, successful AND/OR training, the expected XOR
-failure, input validation, and seed reproducibility.
+Python tests cover the truth-table datasets, predictions, successful AND/OR training, the expected
+XOR failure, input validation, and seed reproducibility. CTest covers the same C++ perceptron
+behavior, deterministic model parameters and histories, MLP convergence on every XOR example,
+invalid configuration, and the project smoke test.
 
 ## C++ build
 
-The C++20 project currently provides project metadata as a small standard-library-only library
-and a smoke test. It establishes the build and test conventions without pretending that a C++
-model has already been implemented.
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, two
+experiment executables, and CTest executables without downloading a testing framework.
 
 ```bash
 cmake -S . -B build
 cmake --build build
 ctest --test-dir build --output-on-failure
+
+./build/cpp_perceptron_logic_gates
+./build/cpp_xor_mlp
 ```
 
 ## Planned roadmap

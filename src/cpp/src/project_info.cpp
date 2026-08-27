@@ -6,4 +6,4 @@ std::string_view project_name() noexcept { return "ml-from-scratch-cpp-python"; 
 
 std::string_view project_version() noexcept { return "0.1.0"; }
 
-}  // namespace ml_scratch
+} // namespace ml_scratch
