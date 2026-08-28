@@ -27,7 +27,9 @@ meaningful differences.
 | Perceptron: XOR limitation | ✅ Demonstrated | Planned | Planned | ✅ Demonstrated |
 | Two-layer MLP: XOR | Planned | Planned | Planned | ✅ Complete |
 | Softmax regression: MNIST | Planned | Planned | Planned | Planned |
-| MLP / CNN: MNIST | Planned | Planned | Planned | Planned |
+| MLP: MNIST digit recognition | Planned | Planned | Planned | Planned |
+| CNN: MNIST digit recognition | Planned | Planned | Planned | Planned |
+| Snake agent with reinforcement learning | Planned | Planned | Planned | Planned |
 | Optimizer and implementation benchmarks | Planned | Planned | Planned | Planned |
 
 ## Quick start
@@ -140,10 +142,11 @@ ctest --test-dir build --output-on-failure
 2. Two-layer MLP for XOR
 3. Manual backpropagation and numerical gradient checking
 4. Softmax regression on MNIST
-5. MLP on MNIST
-6. Small CNN
+5. MLP for handwritten-digit recognition on MNIST
+6. Train a convolutional neural network for handwritten-digit recognition on MNIST
 7. Optimizer comparisons: batch GD, SGD, mini-batch SGD, Momentum, RMSProp, and Adam
-8. Python, NumPy, PyTorch, and C++ benchmarks
+8. Snake-playing agent trained with reinforcement learning
+9. Python, NumPy, PyTorch, and C++ benchmarks
 
 Comparisons will consider **accuracy, convergence, execution time, memory usage, and
 implementation complexity**. Each comparison should document its environment, dataset split,
