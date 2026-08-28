@@ -26,11 +26,19 @@ meaningful differences.
 | Perceptron: AND / OR | ✅ Complete | Planned | Planned | ✅ Complete |
 | Perceptron: XOR limitation | ✅ Demonstrated | Planned | Planned | ✅ Demonstrated |
 | Two-layer MLP: XOR | Planned | Planned | Planned | ✅ Complete |
+| Backpropagation and gradient checking | Planned | Planned | Planned | Planned |
 | Softmax regression: MNIST | Planned | Planned | Planned | Planned |
 | MLP: MNIST digit recognition | Planned | Planned | Planned | Planned |
+| Optimizer comparisons | Planned | Planned | Planned | Planned |
+| Regularization, initialization, and normalization | Planned | Planned | Planned | Planned |
 | CNN: MNIST digit recognition | Planned | Planned | Planned | Planned |
-| Snake agent with reinforcement learning | Planned | Planned | Planned | Planned |
-| Optimizer and implementation benchmarks | Planned | Planned | Planned | Planned |
+| Residual network: image classification | Planned | Planned | Planned | Planned |
+| Conditional GAN: MNIST digit generation | Planned | Planned | Planned | Planned |
+| RNN: character-level sequence modeling | Planned | Planned | Planned | Planned |
+| LSTM and GRU: character-level sequence modeling | Planned | Planned | Planned | Planned |
+| Tiny Transformer: character-level language modeling | Planned | Planned | Planned | Planned |
+| Snake agent: Q-learning and DQN | Planned | Planned | Planned | Planned |
+| Cross-language implementation benchmarks | Planned | Planned | Planned | Planned |
 
 ## Quick start
 
@@ -143,10 +151,43 @@ ctest --test-dir build --output-on-failure
 3. Manual backpropagation and numerical gradient checking
 4. Softmax regression on MNIST
 5. MLP for handwritten-digit recognition on MNIST
-6. Train a convolutional neural network for handwritten-digit recognition on MNIST
-7. Optimizer comparisons: batch GD, SGD, mini-batch SGD, Momentum, RMSProp, and Adam
-8. Snake-playing agent trained with reinforcement learning
-9. Python, NumPy, PyTorch, and C++ benchmarks
+6. Optimizer comparisons: batch GD, SGD, mini-batch SGD, Momentum, RMSProp, and Adam
+7. Weight initialization, L1/L2 regularization, dropout, early stopping, batch normalization, and
+   layer normalization
+8. Convolutional neural network for handwritten-digit recognition on MNIST
+9. Residual connections in an MLP, followed by a small ResNet image classifier on CIFAR-10
+10. Conditional GAN for controllable MNIST digit generation, including investigations of training
+    instability and mode collapse
+11. Character-level RNN with unrolled backpropagation through time and gradient clipping
+12. Character-level LSTM and GRU models for longer-term dependencies
+13. Tiny decoder-only Transformer with positional encoding, causal masking, and multi-head
+    attention
+14. Snake environment with a random baseline, tabular Q-learning, and DQN using experience replay,
+    a target network, and a documented exploration schedule
+15. Reproducible Python, NumPy, PyTorch, and C++ benchmarks
+
+The RNN and Transformer milestones should share a small fixed text corpus, vocabulary, data split,
+and next-character objective so recurrence and self-attention can be compared fairly. The residual
+milestone should first isolate an identity skip connection in a small MLP before introducing
+convolutional residual blocks. Sequence reports may add cross-entropy, perplexity, parameter count,
+and tokens per second, but only when those values have actually been measured.
+
+The GAN milestone should treat generated digits as an evaluation problem, not merely publish a
+sample grid. It should compare against a simple baseline and report measured class consistency,
+diversity, and coverage using a separately trained classifier or another documented evaluation
+method. Generator and discriminator losses alone are not evidence that useful generation was
+learned.
+
+Every milestone should use these requirements where applicable:
+
+- fixed train, validation, and test splits;
+- deterministic seeds and versioned experiment configuration;
+- numerical-stability and edge-case tests;
+- a simple baseline that establishes whether learning improved anything;
+- checkpoint save/load tests for models that require meaningful training time;
+- parameter-count and environment metadata alongside measured results; and
+- evaluation that is separate from training, including exploration-free evaluation for
+  reinforcement-learning agents.
 
 Comparisons will consider **accuracy, convergence, execution time, memory usage, and
 implementation complexity**. Each comparison should document its environment, dataset split,
