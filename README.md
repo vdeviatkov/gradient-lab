@@ -1,44 +1,50 @@
 # ml-from-scratch-cpp-python
 
-Machine learning algorithms implemented from scratch in pure Python, NumPy, PyTorch, and C++,
-with experiments comparing training methods, accuracy, and performance.
+Machine learning algorithms implemented from scratch in pure Python, NumPy, PyTorch, JAX, C++,
+and Triton, with experiments comparing training methods, accuracy, and performance.
 
 ## Purpose
 
 This repository is an educational laboratory for understanding how machine-learning algorithms
 work below the framework API. Each milestone starts from the mathematics, adds tests and a
-reproducible experiment, and then implements equivalent behavior across four progressively more
-specialized environments:
+reproducible experiment, and then implements equivalent behavior across six complementary
+environments:
 
 - **Pure Python** makes every operation visible and keeps the first principles dependency-free.
 - **NumPy** introduces vectorized numerical programming without hiding the algorithm.
 - **PyTorch** connects the same ideas to tensors, automatic differentiation, and common tooling.
+- **JAX** explores functional transformations, automatic differentiation, vectorization, and JIT
+  compilation.
 - **Modern C++** explores explicit data structures, memory behavior, and compiled performance.
+- **Triton** exposes GPU tiling, memory movement, kernel fusion, and hardware-aware optimization.
 
-The goal is not to make four textually identical programs. It is to keep their datasets,
+The goal is not to make six textually identical programs. It is to keep their datasets,
 initialization, learning rules, stopping conditions, and metrics comparable enough to explain
 meaningful differences.
 
 ## Implementation status
 
-| Milestone | Pure Python | NumPy | PyTorch | C++ |
-|---|---:|---:|---:|---:|
-| Perceptron: AND / OR | ✅ Complete | Planned | Planned | ✅ Complete |
-| Perceptron: XOR limitation | ✅ Demonstrated | Planned | Planned | ✅ Demonstrated |
-| Two-layer MLP: XOR | Planned | Planned | Planned | ✅ Complete |
-| Backpropagation and gradient checking | Planned | Planned | Planned | Planned |
-| Softmax regression: MNIST | Planned | Planned | Planned | Planned |
-| MLP: MNIST digit recognition | Planned | Planned | Planned | Planned |
-| Optimizer comparisons | Planned | Planned | Planned | Planned |
-| Regularization, initialization, and normalization | Planned | Planned | Planned | Planned |
-| CNN: MNIST digit recognition | Planned | Planned | Planned | Planned |
-| Residual network: image classification | Planned | Planned | Planned | Planned |
-| Conditional GAN: MNIST digit generation | Planned | Planned | Planned | Planned |
-| RNN: character-level sequence modeling | Planned | Planned | Planned | Planned |
-| LSTM and GRU: character-level sequence modeling | Planned | Planned | Planned | Planned |
-| Tiny Transformer: character-level language modeling | Planned | Planned | Planned | Planned |
-| Snake agent: Q-learning and DQN | Planned | Planned | Planned | Planned |
-| Cross-language implementation benchmarks | Planned | Planned | Planned | Planned |
+| Milestone | Pure Python | NumPy | PyTorch | JAX | C++ | Triton |
+|---|---:|---:|---:|---:|---:|---:|
+| Perceptron: AND / OR | ✅ Complete | Planned | Planned | Planned | ✅ Complete | — |
+| Perceptron: XOR limitation | ✅ Demonstrated | Planned | Planned | Planned | ✅ Demonstrated | — |
+| Two-layer MLP: XOR | Planned | Planned | Planned | Planned | ✅ Complete | — |
+| Backpropagation and gradient checking | Planned | Planned | Planned | Planned | Planned | — |
+| Softmax regression: MNIST | Planned | Planned | Planned | Planned | Planned | Planned |
+| MLP: MNIST digit recognition | Planned | Planned | Planned | Planned | Planned | Planned |
+| Optimizer comparisons | Planned | Planned | Planned | Planned | Planned | Planned |
+| Regularization, initialization, and normalization | Planned | Planned | Planned | Planned | Planned | Planned |
+| CNN: MNIST digit recognition | Planned | Planned | Planned | Planned | Planned | Planned |
+| Residual network: image classification | Planned | Planned | Planned | Planned | Planned | Planned |
+| Conditional GAN: MNIST digit generation | Planned | Planned | Planned | Planned | Planned | Planned |
+| RNN: character-level sequence modeling | Planned | Planned | Planned | Planned | Planned | Planned |
+| LSTM and GRU: character-level sequence modeling | Planned | Planned | Planned | Planned | Planned | Planned |
+| Tiny Transformer: character-level language modeling | Planned | Planned | Planned | Planned | Planned | Planned |
+| Snake agent: Q-learning and DQN | Planned | Planned | Planned | Planned | Planned | Planned |
+| Implementation benchmarks | Planned | Planned | Planned | Planned | Planned | Planned |
+
+`—` means that a standalone Triton kernel would not add meaningful educational value for that
+milestone.
 
 ## Quick start
 
@@ -164,7 +170,7 @@ ctest --test-dir build --output-on-failure
     attention
 14. Snake environment with a random baseline, tabular Q-learning, and DQN using experience replay,
     a target network, and a documented exploration schedule
-15. Reproducible Python, NumPy, PyTorch, and C++ benchmarks
+15. Reproducible Python, NumPy, PyTorch, JAX, C++, and Triton benchmarks
 
 The RNN and Transformer milestones should share a small fixed text corpus, vocabulary, data split,
 and next-character objective so recurrence and self-attention can be compared fairly. The residual
