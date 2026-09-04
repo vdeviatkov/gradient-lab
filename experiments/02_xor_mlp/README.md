@@ -15,5 +15,5 @@ cmake --build build
 
 The executable exits unsuccessfully unless all four XOR predictions are correct and the measured
 loss reaches the configured threshold. A reusable backpropagation abstraction and numerical
-gradient checking remain roadmap milestone 3; NumPy, PyTorch, and pure-Python XOR MLP versions are
-also still planned.
+gradient checking remain a later roadmap milestone; NumPy, PyTorch, and pure-Python XOR MLP
+versions are also still planned.

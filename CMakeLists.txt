@@ -9,6 +9,7 @@ project(
 
 add_library(
     ml_scratch_cpp STATIC
+    src/cpp/src/linear_regression.cpp
     src/cpp/src/logic_gates.cpp
     src/cpp/src/perceptron.cpp
     src/cpp/src/project_info.cpp
@@ -39,6 +40,10 @@ add_executable(cpp_xor_mlp experiments/02_xor_mlp/cpp_main.cpp)
 target_link_libraries(cpp_xor_mlp PRIVATE ml_scratch_cpp)
 enable_project_warnings(cpp_xor_mlp)
 
+add_executable(cpp_linear_regression experiments/03_linear_regression/cpp_main.cpp)
+target_link_libraries(cpp_linear_regression PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_linear_regression)
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
@@ -50,4 +55,9 @@ if(BUILD_TESTING)
     target_link_libraries(cpp_logic_models_test PRIVATE ml_scratch_cpp)
     enable_project_warnings(cpp_logic_models_test)
     add_test(NAME cpp_logic_models_test COMMAND cpp_logic_models_test)
+
+    add_executable(cpp_linear_regression_test tests/cpp/linear_regression_test.cpp)
+    target_link_libraries(cpp_linear_regression_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_linear_regression_test)
+    add_test(NAME cpp_linear_regression_test COMMAND cpp_linear_regression_test)
 endif()

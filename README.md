@@ -29,7 +29,7 @@ meaningful differences.
 | Perceptron: AND / OR | ✅ Complete | Planned | Planned | Planned | ✅ Complete | — |
 | Perceptron: XOR limitation | ✅ Demonstrated | Planned | Planned | Planned | ✅ Demonstrated | — |
 | Two-layer MLP: XOR | Planned | Planned | Planned | Planned | ✅ Complete | — |
-| Linear regression | Planned | Planned | Planned | Planned | Planned | — |
+| Linear regression | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Binary logistic regression | Planned | Planned | Planned | Planned | Planned | — |
 | PCA and k-means | Planned | Planned | Planned | Planned | Planned | — |
 | Decision tree classification | Planned | Planned | Planned | Planned | Planned | — |
@@ -124,9 +124,22 @@ boundaries, so it can represent XOR. Training is considered converged only when 
 predictions are correct and the measured loss reaches the configured threshold. See
 [the MLP mathematics](docs/mathematics/xor_mlp.md) for the forward and backward equations.
 
-The implementation contains the gradients needed for this concrete network. Roadmap milestone 3
-will turn that focused derivation into a more general backpropagation design and verify its
-gradients numerically.
+The implementation contains the gradients needed for this concrete network. The later
+backpropagation milestone will turn that focused derivation into a more general design and verify
+its gradients numerically.
+
+### Linear regression
+
+The C++ linear regression milestone implements a reusable multivariate model and four fitting
+strategies: the normal-equation solution, batch gradient descent, stochastic gradient descent,
+and mini-batch gradient descent. The closed-form solver uses pivoted Gaussian elimination written
+with standard-library containers; the iterative solvers use explicitly derived gradients and
+zero initialization. Seeded shuffling makes SGD and mini-batch runs reproducible.
+
+The experiment fits a small exact line, evaluates on a fixed held-out set, and checks each
+optimizer against the closed-form coefficients. See the
+[linear regression mathematics](docs/mathematics/linear_regression.md) and the
+[reproducible experiment](experiments/03_linear_regression/README.md).
 
 ## Testing and quality checks
 
@@ -138,11 +151,12 @@ ruff check .
 Python tests cover the truth-table datasets, predictions, successful AND/OR training, the expected
 XOR failure, input validation, and seed reproducibility. CTest covers the same C++ perceptron
 behavior, deterministic model parameters and histories, MLP convergence on every XOR example,
-invalid configuration, and the project smoke test.
+all four linear-regression solvers, optimizer agreement, regression metrics and edge cases, and
+the project smoke test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, two
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, three
 experiment executables, and CTest executables without downloading a testing framework.
 
 ```bash
@@ -152,6 +166,7 @@ ctest --test-dir build --output-on-failure
 
 ./build/cpp_perceptron_logic_gates
 ./build/cpp_xor_mlp
+./build/cpp_linear_regression
 ```
 
 ## Planned roadmap
