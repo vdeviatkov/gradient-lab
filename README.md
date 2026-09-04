@@ -30,7 +30,7 @@ meaningful differences.
 | Perceptron: XOR limitation | ✅ Demonstrated | Planned | Planned | Planned | ✅ Demonstrated | — |
 | Two-layer MLP: XOR | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Linear regression | Planned | Planned | Planned | Planned | ✅ Complete | — |
-| Binary logistic regression | Planned | Planned | Planned | Planned | Planned | — |
+| Binary logistic regression | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | PCA and k-means | Planned | Planned | Planned | Planned | Planned | — |
 | Decision tree classification | Planned | Planned | Planned | Planned | Planned | — |
 | Backpropagation and gradient checking | Planned | Planned | Planned | Planned | Planned | — |
@@ -141,6 +141,19 @@ optimizer against the closed-form coefficients. See the
 [linear regression mathematics](docs/mathematics/linear_regression.md) and the
 [reproducible experiment](experiments/03_linear_regression/README.md).
 
+### Binary logistic regression
+
+The C++ binary logistic regression model learns probabilities with explicitly implemented
+mini-batch gradients and numerically stable binary cross-entropy. It supports a positive-class
+weight, seeded shuffling, configurable loss-based stopping, and multivariate inputs. Separate
+evaluation utilities calculate a confusion matrix, accuracy, precision, recall, and F1.
+
+The deterministic experiment uses fixed train, validation, and test splits with an imbalanced,
+overlapping dataset. It chooses a threshold by validation F1 and compares the frozen threshold on
+test data against both `0.5` and an always-negative majority baseline. See the
+[logistic regression mathematics](docs/mathematics/logistic_regression.md) and the
+[reproducible experiment](experiments/04_logistic_regression/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -152,11 +165,12 @@ Python tests cover the truth-table datasets, predictions, successful AND/OR trai
 XOR failure, input validation, and seed reproducibility. CTest covers the same C++ perceptron
 behavior, deterministic model parameters and histories, MLP convergence on every XOR example,
 all four linear-regression solvers, optimizer agreement, regression metrics and edge cases, and
-the project smoke test.
+logistic-regression convergence, numerical stability, threshold selection, classification
+metrics, class weighting and imbalance behavior, and the project smoke test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, three
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, four
 experiment executables, and CTest executables without downloading a testing framework.
 
 ```bash
@@ -167,6 +181,7 @@ ctest --test-dir build --output-on-failure
 ./build/cpp_perceptron_logic_gates
 ./build/cpp_xor_mlp
 ./build/cpp_linear_regression
+./build/cpp_logistic_regression
 ```
 
 ## Planned roadmap
