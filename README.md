@@ -31,7 +31,7 @@ meaningful differences.
 | Two-layer MLP: XOR | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Linear regression | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Binary logistic regression | Planned | Planned | Planned | Planned | ✅ Complete | — |
-| PCA and k-means | Planned | Planned | Planned | Planned | Planned | — |
+| PCA and k-means | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Decision tree classification | Planned | Planned | Planned | Planned | Planned | — |
 | Backpropagation and gradient checking | Planned | Planned | Planned | Planned | Planned | — |
 | Softmax regression: MNIST | Planned | Planned | Planned | Planned | Planned | Planned |
@@ -154,6 +154,22 @@ test data against both `0.5` and an always-negative majority baseline. See the
 [logistic regression mathematics](docs/mathematics/logistic_regression.md) and the
 [reproducible experiment](experiments/04_logistic_regression/README.md).
 
+### PCA and k-means
+
+The C++ unsupervised milestone implements both algorithms without a linear-algebra dependency. PCA
+builds the unbiased sample covariance matrix and diagonalizes it with cyclic Jacobi rotations,
+then reports explained variance, explained-variance ratios, and held-out reconstruction error for
+each rank. Deterministic conventions — descending eigenvalues with an index tie-break and a fixed
+eigenvector sign — make repeated runs comparable.
+
+k-means implements Lloyd's algorithm with both random-sample and k-means++ initialization, seeded
+restarts that keep the lowest-inertia run, and explicit empty-cluster handling. Because inertia
+falls monotonically with the cluster count, the experiment selects `k` from held-out inertia with
+an elbow heuristic and never from labels. Purity against the known groups is computed only at
+evaluation time and compared against a single-cluster baseline. See the
+[PCA and k-means mathematics](docs/mathematics/pca_kmeans.md) and the
+[reproducible experiment](experiments/05_pca_kmeans/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -164,13 +180,16 @@ ruff check .
 Python tests cover the truth-table datasets, predictions, successful AND/OR training, the expected
 XOR failure, input validation, and seed reproducibility. CTest covers the same C++ perceptron
 behavior, deterministic model parameters and histories, MLP convergence on every XOR example,
-all four linear-regression solvers, optimizer agreement, regression metrics and edge cases, and
+all four linear-regression solvers, optimizer agreement, regression metrics and edge cases,
 logistic-regression convergence, numerical stability, threshold selection, classification
-metrics, class weighting and imbalance behavior, and the project smoke test.
+metrics, class weighting and imbalance behavior, PCA covariance and eigenpair identities,
+projection and reconstruction properties, k-means recovery of known clusters, inertia monotonicity,
+restart and seed reproducibility, empty-cluster and duplicate-point handling, and the project
+smoke test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, four
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, five
 experiment executables, and CTest executables without downloading a testing framework.
 
 ```bash
@@ -182,6 +201,7 @@ ctest --test-dir build --output-on-failure
 ./build/cpp_xor_mlp
 ./build/cpp_linear_regression
 ./build/cpp_logistic_regression
+./build/cpp_pca_kmeans
 ```
 
 ## Planned roadmap

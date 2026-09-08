@@ -9,9 +9,12 @@ project(
 
 add_library(
     ml_scratch_cpp STATIC
+    src/cpp/src/dataset.cpp
+    src/cpp/src/kmeans.cpp
     src/cpp/src/linear_regression.cpp
     src/cpp/src/logistic_regression.cpp
     src/cpp/src/logic_gates.cpp
+    src/cpp/src/pca.cpp
     src/cpp/src/perceptron.cpp
     src/cpp/src/project_info.cpp
     src/cpp/src/xor_mlp.cpp
@@ -49,6 +52,10 @@ add_executable(cpp_logistic_regression experiments/04_logistic_regression/cpp_ma
 target_link_libraries(cpp_logistic_regression PRIVATE ml_scratch_cpp)
 enable_project_warnings(cpp_logistic_regression)
 
+add_executable(cpp_pca_kmeans experiments/05_pca_kmeans/cpp_main.cpp)
+target_link_libraries(cpp_pca_kmeans PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_pca_kmeans)
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
@@ -70,4 +77,14 @@ if(BUILD_TESTING)
     target_link_libraries(cpp_logistic_regression_test PRIVATE ml_scratch_cpp)
     enable_project_warnings(cpp_logistic_regression_test)
     add_test(NAME cpp_logistic_regression_test COMMAND cpp_logistic_regression_test)
+
+    add_executable(cpp_pca_test tests/cpp/pca_test.cpp)
+    target_link_libraries(cpp_pca_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_pca_test)
+    add_test(NAME cpp_pca_test COMMAND cpp_pca_test)
+
+    add_executable(cpp_kmeans_test tests/cpp/kmeans_test.cpp)
+    target_link_libraries(cpp_kmeans_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_kmeans_test)
+    add_test(NAME cpp_kmeans_test COMMAND cpp_kmeans_test)
 endif()
