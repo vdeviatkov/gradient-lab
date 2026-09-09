@@ -1,3 +1,4 @@
+#include "ml_scratch/deterministic_random.hpp"
 #include "ml_scratch/kmeans.hpp"
 #include "ml_scratch/pca.hpp"
 
@@ -18,32 +19,6 @@ constexpr std::size_t validation_per_group = 8;
 constexpr std::size_t max_candidate_clusters = 6;
 constexpr std::size_t kmeans_restarts = 10;
 
-// A self-contained splitmix64 stream plus Box-Muller. The standard distributions are not specified
-// bit-for-bit, so generating the dataset explicitly keeps it identical on every standard library.
-class DeterministicGaussian {
-  public:
-    explicit DeterministicGaussian(const std::uint64_t initial_state) : state_(initial_state) {}
-
-    double operator()() {
-        // Box-Muller consumes two uniforms and returns one of the two normal deviates.
-        const double first = std::max(next_uniform(), 1e-12);
-        const double second = next_uniform();
-        return std::sqrt(-2.0 * std::log(first)) * std::cos(2.0 * 3.14159265358979323846 * second);
-    }
-
-  private:
-    double next_uniform() {
-        state_ += 0x9E3779B97F4A7C15ULL;
-        std::uint64_t value = state_;
-        value = (value ^ (value >> 30)) * 0xBF58476D1CE4E5B9ULL;
-        value = (value ^ (value >> 27)) * 0x94D049BB133111EBULL;
-        value ^= value >> 31;
-        return static_cast<double>(value >> 11) / 9007199254740992.0; // 2^53
-    }
-
-    std::uint64_t state_;
-};
-
 struct LabeledSplit {
     ml_scratch::FeatureMatrix features;
     std::vector<std::size_t> labels;
@@ -63,17 +38,17 @@ Dataset build_dataset() {
     constexpr double group_spread = 0.6;
     constexpr double observation_noise = 0.05;
 
-    DeterministicGaussian noise{seed};
+    ml_scratch::DeterministicRandom noise{seed};
     Dataset dataset;
     for (std::size_t group = 0; group < true_group_count; ++group) {
         for (std::size_t index = 0; index < samples_per_group; ++index) {
-            const double x = latent_centers[group][0] + group_spread * noise();
-            const double y = latent_centers[group][1] + group_spread * noise();
+            const double x = latent_centers[group][0] + group_spread * noise.gaussian();
+            const double y = latent_centers[group][1] + group_spread * noise.gaussian();
             const std::vector<double> sample{
-                x + observation_noise * noise(),
-                y + observation_noise * noise(),
-                0.8 * x - 0.6 * y + observation_noise * noise(),
-                0.3 * x + 0.4 * y + observation_noise * noise(),
+                x + observation_noise * noise.gaussian(),
+                y + observation_noise * noise.gaussian(),
+                0.8 * x - 0.6 * y + observation_noise * noise.gaussian(),
+                0.3 * x + 0.4 * y + observation_noise * noise.gaussian(),
             };
 
             LabeledSplit& split = index < train_per_group ? dataset.train

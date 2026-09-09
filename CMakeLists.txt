@@ -10,6 +10,8 @@ project(
 add_library(
     ml_scratch_cpp STATIC
     src/cpp/src/dataset.cpp
+    src/cpp/src/decision_tree.cpp
+    src/cpp/src/deterministic_random.cpp
     src/cpp/src/kmeans.cpp
     src/cpp/src/linear_regression.cpp
     src/cpp/src/logistic_regression.cpp
@@ -56,6 +58,10 @@ add_executable(cpp_pca_kmeans experiments/05_pca_kmeans/cpp_main.cpp)
 target_link_libraries(cpp_pca_kmeans PRIVATE ml_scratch_cpp)
 enable_project_warnings(cpp_pca_kmeans)
 
+add_executable(cpp_decision_tree experiments/06_decision_tree/cpp_main.cpp)
+target_link_libraries(cpp_decision_tree PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_decision_tree)
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
@@ -87,4 +93,9 @@ if(BUILD_TESTING)
     target_link_libraries(cpp_kmeans_test PRIVATE ml_scratch_cpp)
     enable_project_warnings(cpp_kmeans_test)
     add_test(NAME cpp_kmeans_test COMMAND cpp_kmeans_test)
+
+    add_executable(cpp_decision_tree_test tests/cpp/decision_tree_test.cpp)
+    target_link_libraries(cpp_decision_tree_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_decision_tree_test)
+    add_test(NAME cpp_decision_tree_test COMMAND cpp_decision_tree_test)
 endif()

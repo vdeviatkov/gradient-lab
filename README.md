@@ -32,7 +32,7 @@ meaningful differences.
 | Linear regression | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Binary logistic regression | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | PCA and k-means | Planned | Planned | Planned | Planned | ✅ Complete | — |
-| Decision tree classification | Planned | Planned | Planned | Planned | Planned | — |
+| Decision tree classification | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Backpropagation and gradient checking | Planned | Planned | Planned | Planned | Planned | — |
 | Softmax regression: MNIST | Planned | Planned | Planned | Planned | Planned | Planned |
 | MLP: MNIST digit recognition | Planned | Planned | Planned | Planned | Planned | Planned |
@@ -170,6 +170,23 @@ evaluation time and compared against a single-cluster baseline. See the
 [PCA and k-means mathematics](docs/mathematics/pca_kmeans.md) and the
 [reproducible experiment](experiments/05_pca_kmeans/README.md).
 
+### Decision tree classification
+
+The C++ decision tree grows axis-aligned splits by exhaustive search over features and midpoint
+thresholds, scoring each candidate by impurity decrease under either Gini impurity or entropy.
+Sorting with an index tie-break and keeping only strictly better candidates makes the tree a
+deterministic function of the dataset. Multiclass labels, `max_depth`, `min_samples_split`,
+`min_samples_leaf`, and `min_impurity_decrease` are all supported, and reduced-error post-pruning
+collapses subtrees against a validation split.
+
+Growth is greedy, which the tests record as a real limitation rather than a rough edge: on an exact
+checkerboard every single-feature split leaves impurity unchanged, so the search stops at the root
+even though a depth-two tree would be perfect. The experiment measures the overfitting story
+directly — training accuracy climbing to 100% while validation accuracy peaks early and then
+falls — instead of reporting training accuracy alone. See the
+[decision tree mathematics](docs/mathematics/decision_tree.md) and the
+[reproducible experiment](experiments/06_decision_tree/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -184,12 +201,14 @@ all four linear-regression solvers, optimizer agreement, regression metrics and 
 logistic-regression convergence, numerical stability, threshold selection, classification
 metrics, class weighting and imbalance behavior, PCA covariance and eigenpair identities,
 projection and reconstruction properties, k-means recovery of known clusters, inertia monotonicity,
-restart and seed reproducibility, empty-cluster and duplicate-point handling, and the project
-smoke test.
+restart and seed reproducibility, empty-cluster and duplicate-point handling, decision-tree
+impurity measures, split selection and tie-breaking, depth and leaf constraints, the greedy
+search's checkerboard failure, reduced-error pruning and node compaction, and the project smoke
+test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, five
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, six
 experiment executables, and CTest executables without downloading a testing framework.
 
 ```bash
@@ -202,6 +221,7 @@ ctest --test-dir build --output-on-failure
 ./build/cpp_linear_regression
 ./build/cpp_logistic_regression
 ./build/cpp_pca_kmeans
+./build/cpp_decision_tree
 ```
 
 ## Planned roadmap
