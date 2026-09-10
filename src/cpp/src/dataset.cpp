@@ -78,6 +78,58 @@ std::vector<std::size_t> class_counts(const LabeledDataset& dataset,
     return counts;
 }
 
+SupervisedShape validate_supervised_dataset(const SupervisedDataset& dataset) {
+    if (dataset.empty()) {
+        throw std::invalid_argument("dataset must not be empty");
+    }
+
+    const SupervisedShape shape{dataset.front().features.size(), dataset.front().targets.size()};
+    if (shape.feature_count == 0) {
+        throw std::invalid_argument("samples must have at least one feature");
+    }
+    if (shape.target_count == 0) {
+        throw std::invalid_argument("samples must have at least one target");
+    }
+    for (const auto& sample : dataset) {
+        if (sample.features.size() != shape.feature_count) {
+            throw std::invalid_argument("all samples must have the same feature count");
+        }
+        if (sample.targets.size() != shape.target_count) {
+            throw std::invalid_argument("all samples must have the same target count");
+        }
+        for (const double feature : sample.features) {
+            if (!std::isfinite(feature)) {
+                throw std::invalid_argument("features must be finite");
+            }
+        }
+        for (const double target : sample.targets) {
+            if (!std::isfinite(target)) {
+                throw std::invalid_argument("targets must be finite");
+            }
+        }
+    }
+    return shape;
+}
+
+SupervisedDataset to_one_hot(const LabeledDataset& dataset, const std::size_t class_count) {
+    const DatasetShape shape = validate_labeled_dataset(dataset);
+    if (shape.class_count > class_count) {
+        throw std::invalid_argument("dataset contains a label outside the class count");
+    }
+    if (class_count == 0) {
+        throw std::invalid_argument("class_count must be positive");
+    }
+
+    SupervisedDataset encoded;
+    encoded.reserve(dataset.size());
+    for (const auto& sample : dataset) {
+        std::vector<double> targets(class_count, 0.0);
+        targets[sample.label] = 1.0;
+        encoded.push_back({sample.features, std::move(targets)});
+    }
+    return encoded;
+}
+
 double squared_euclidean_distance(const std::vector<double>& left,
                                   const std::vector<double>& right) {
     if (left.size() != right.size()) {

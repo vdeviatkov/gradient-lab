@@ -33,7 +33,7 @@ meaningful differences.
 | Binary logistic regression | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | PCA and k-means | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Decision tree classification | Planned | Planned | Planned | Planned | ✅ Complete | — |
-| Backpropagation and gradient checking | Planned | Planned | Planned | Planned | Planned | — |
+| Backpropagation and gradient checking | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Softmax regression: MNIST | Planned | Planned | Planned | Planned | Planned | Planned |
 | MLP: MNIST digit recognition | Planned | Planned | Planned | Planned | Planned | Planned |
 | Optimizer comparisons | Planned | Planned | Planned | Planned | Planned | Planned |
@@ -124,9 +124,9 @@ boundaries, so it can represent XOR. Training is considered converged only when 
 predictions are correct and the measured loss reaches the configured threshold. See
 [the MLP mathematics](docs/mathematics/xor_mlp.md) for the forward and backward equations.
 
-The implementation contains the gradients needed for this concrete network. The later
-backpropagation milestone will turn that focused derivation into a more general design and verify
-its gradients numerically.
+The implementation contains the gradients needed for this concrete network. The
+[backpropagation milestone](docs/mathematics/backpropagation.md) turns that focused derivation into
+a general design and verifies its gradients numerically.
 
 ### Linear regression
 
@@ -187,6 +187,24 @@ falls — instead of reporting training accuracy alone. See the
 [decision tree mathematics](docs/mathematics/decision_tree.md) and the
 [reproducible experiment](experiments/06_decision_tree/README.md).
 
+### Backpropagation and gradient checking
+
+The C++ backpropagation milestone turns the XOR network's hand-derived gradients into a general
+`FeedForwardNetwork`: any stack of fully connected layers, identity, sigmoid, tanh, or ReLU
+activations, and squared error, binary cross-entropy, or softmax cross-entropy. The cross-entropy
+losses apply their own output transform, so the final layer stays linear, the output delta
+collapses to `p - y`, and the loss can be written in the overflow-free softplus and log-sum-exp
+forms.
+
+Every parameter is exposed as one flat vector, which is what makes the verification general: any
+architecture becomes a function from a parameter vector to a scalar, and the same central-difference
+loop checks all of them. The verdict uses the norm ratio rather than a per-element one, and the
+experiment measures where the method itself breaks down — the step-size trade-off between
+truncation and round-off, and the degeneracy at a converged minimum where every gradient entry
+approaches zero. See the
+[backpropagation mathematics](docs/mathematics/backpropagation.md) and the
+[reproducible experiment](experiments/07_backpropagation/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -203,12 +221,13 @@ metrics, class weighting and imbalance behavior, PCA covariance and eigenpair id
 projection and reconstruction properties, k-means recovery of known clusters, inertia monotonicity,
 restart and seed reproducibility, empty-cluster and duplicate-point handling, decision-tree
 impurity measures, split selection and tie-breaking, depth and leaf constraints, the greedy
-search's checkerboard failure, reduced-error pruning and node compaction, and the project smoke
-test.
+search's checkerboard failure, reduced-error pruning and node compaction, hand-computed neural
+network forward passes, losses and gradients, gradient checks across six architecture and loss
+combinations, detection of deliberately corrupted gradients, and the project smoke test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, six
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, seven
 experiment executables, and CTest executables without downloading a testing framework.
 
 ```bash
@@ -222,6 +241,7 @@ ctest --test-dir build --output-on-failure
 ./build/cpp_logistic_regression
 ./build/cpp_pca_kmeans
 ./build/cpp_decision_tree
+./build/cpp_backpropagation
 ```
 
 ## Planned roadmap

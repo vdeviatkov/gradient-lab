@@ -16,6 +16,7 @@ add_library(
     src/cpp/src/linear_regression.cpp
     src/cpp/src/logistic_regression.cpp
     src/cpp/src/logic_gates.cpp
+    src/cpp/src/neural_network.cpp
     src/cpp/src/pca.cpp
     src/cpp/src/perceptron.cpp
     src/cpp/src/project_info.cpp
@@ -62,6 +63,10 @@ add_executable(cpp_decision_tree experiments/06_decision_tree/cpp_main.cpp)
 target_link_libraries(cpp_decision_tree PRIVATE ml_scratch_cpp)
 enable_project_warnings(cpp_decision_tree)
 
+add_executable(cpp_backpropagation experiments/07_backpropagation/cpp_main.cpp)
+target_link_libraries(cpp_backpropagation PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_backpropagation)
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
@@ -98,4 +103,9 @@ if(BUILD_TESTING)
     target_link_libraries(cpp_decision_tree_test PRIVATE ml_scratch_cpp)
     enable_project_warnings(cpp_decision_tree_test)
     add_test(NAME cpp_decision_tree_test COMMAND cpp_decision_tree_test)
+
+    add_executable(cpp_neural_network_test tests/cpp/neural_network_test.cpp)
+    target_link_libraries(cpp_neural_network_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_neural_network_test)
+    add_test(NAME cpp_neural_network_test COMMAND cpp_neural_network_test)
 endif()
