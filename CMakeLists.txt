@@ -16,10 +16,12 @@ add_library(
     src/cpp/src/linear_regression.cpp
     src/cpp/src/logistic_regression.cpp
     src/cpp/src/logic_gates.cpp
+    src/cpp/src/mnist.cpp
     src/cpp/src/neural_network.cpp
     src/cpp/src/pca.cpp
     src/cpp/src/perceptron.cpp
     src/cpp/src/project_info.cpp
+    src/cpp/src/softmax_regression.cpp
     src/cpp/src/xor_mlp.cpp
 )
 target_include_directories(
@@ -67,6 +69,10 @@ add_executable(cpp_backpropagation experiments/07_backpropagation/cpp_main.cpp)
 target_link_libraries(cpp_backpropagation PRIVATE ml_scratch_cpp)
 enable_project_warnings(cpp_backpropagation)
 
+add_executable(cpp_softmax_mnist experiments/08_softmax_mnist/cpp_main.cpp)
+target_link_libraries(cpp_softmax_mnist PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_softmax_mnist)
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
@@ -108,4 +114,9 @@ if(BUILD_TESTING)
     target_link_libraries(cpp_neural_network_test PRIVATE ml_scratch_cpp)
     enable_project_warnings(cpp_neural_network_test)
     add_test(NAME cpp_neural_network_test COMMAND cpp_neural_network_test)
+
+    add_executable(cpp_softmax_regression_test tests/cpp/softmax_regression_test.cpp)
+    target_link_libraries(cpp_softmax_regression_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_softmax_regression_test)
+    add_test(NAME cpp_softmax_regression_test COMMAND cpp_softmax_regression_test)
 endif()

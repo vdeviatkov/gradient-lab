@@ -34,7 +34,7 @@ meaningful differences.
 | PCA and k-means | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Decision tree classification | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Backpropagation and gradient checking | Planned | Planned | Planned | Planned | ✅ Complete | — |
-| Softmax regression: MNIST | Planned | Planned | Planned | Planned | Planned | Planned |
+| Softmax regression: MNIST | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | MLP: MNIST digit recognition | Planned | Planned | Planned | Planned | Planned | Planned |
 | Optimizer comparisons | Planned | Planned | Planned | Planned | Planned | Planned |
 | Regularization, initialization, and normalization | Planned | Planned | Planned | Planned | Planned | Planned |
@@ -205,6 +205,25 @@ approaches zero. See the
 [backpropagation mathematics](docs/mathematics/backpropagation.md) and the
 [reproducible experiment](experiments/07_backpropagation/README.md).
 
+### Softmax regression on MNIST
+
+The first milestone on a real dataset. It adds an IDX reader written from scratch — big-endian
+headers decoded byte by byte, with explicit rejection of unsupported element types, truncated
+payloads, and mismatched image and label counts — and a `SoftmaxRegression` model with stable
+log-sum-exp cross-entropy, optional L2 on the weights, and macro-averaged multiclass metrics.
+
+The model computes the same function as a single linear layer of the backpropagation milestone's
+network under softmax cross-entropy, and a test requires the two implementations to agree on the
+loss, the gradient, and the predicted probabilities. It exists separately because it indexes a
+dataset of class indices in place instead of materializing one-hot targets and per-batch copies,
+which is what makes the full 60000-image training set practical.
+
+MNIST is not committed; `./scripts/download_mnist.sh` fetches it into the ignored `data/`
+directory. The experiment measures where a linear model stops: it reaches 92.21% test accuracy and
+its errors are structured — 5 read as 3, 4 as 9 — which is all a per-pixel linear vote can see. See
+the [softmax regression mathematics](docs/mathematics/softmax_regression.md) and the
+[reproducible experiment](experiments/08_softmax_mnist/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -223,12 +242,17 @@ restart and seed reproducibility, empty-cluster and duplicate-point handling, de
 impurity measures, split selection and tie-breaking, depth and leaf constraints, the greedy
 search's checkerboard failure, reduced-error pruning and node compaction, hand-computed neural
 network forward passes, losses and gradients, gradient checks across six architecture and loss
-combinations, detection of deliberately corrupted gradients, and the project smoke test.
+combinations, detection of deliberately corrupted gradients, softmax cross-entropy gradients
+checked by hand and against central differences, agreement between the softmax model and the
+general network, IDX parsing including malformed files, multiclass metrics, and the project smoke
+test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, seven
-experiment executables, and CTest executables without downloading a testing framework.
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, eight
+experiment executables, and CTest executables without downloading a testing framework. The tests
+never need a downloaded dataset: the IDX reader is exercised against small files the test writes
+itself.
 
 ```bash
 cmake -S . -B build
@@ -242,6 +266,9 @@ ctest --test-dir build --output-on-failure
 ./build/cpp_pca_kmeans
 ./build/cpp_decision_tree
 ./build/cpp_backpropagation
+
+# Needs MNIST; see scripts/download_mnist.sh
+./build/cpp_softmax_mnist
 ```
 
 ## Planned roadmap
