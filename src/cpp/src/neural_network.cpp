@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
+#include <iomanip>
 #include <numeric>
 #include <random>
 #include <stdexcept>
@@ -120,6 +122,7 @@ FeedForwardNetwork::FeedForwardNetwork(std::vector<DenseLayer> layers, const Los
                 weight = uniform(limit);
             }
         }
+        layer_offsets_.push_back(parameter_count_);
         parameter_count_ += layer.output_size * layer.input_size + layer.output_size;
         parameters_.push_back(std::move(parameters));
     }
@@ -135,8 +138,7 @@ void FeedForwardNetwork::validate_for_network(const SupervisedDataset& dataset) 
     }
 }
 
-FeedForwardNetwork::ForwardCache
-FeedForwardNetwork::forward_cache(const std::vector<double>& input) const {
+void FeedForwardNetwork::forward_into(const std::vector<double>& input, ForwardCache& cache) const {
     if (input.size() != input_size()) {
         throw std::invalid_argument("input size does not match the network");
     }
@@ -146,16 +148,17 @@ FeedForwardNetwork::forward_cache(const std::vector<double>& input) const {
         }
     }
 
-    ForwardCache cache;
-    cache.activations.reserve(layers_.size() + 1);
-    cache.pre_activations.reserve(layers_.size());
-    cache.activations.push_back(input);
+    // Sizes are fixed by the architecture, so the buffers are allocated on the first call and
+    // reused afterwards; a training epoch then allocates nothing per sample.
+    cache.activations.resize(layers_.size() + 1);
+    cache.pre_activations.resize(layers_.size());
+    cache.activations[0] = input;
 
     for (std::size_t index = 0; index < layers_.size(); ++index) {
         const DenseLayer& layer = layers_[index];
-        const std::vector<double>& previous = cache.activations.back();
-        std::vector<double> pre_activation(layer.output_size, 0.0);
-        std::vector<double> activation(layer.output_size, 0.0);
+        const std::vector<double>& previous = cache.activations[index];
+        cache.pre_activations[index].resize(layer.output_size);
+        cache.activations[index + 1].resize(layer.output_size);
 
         for (std::size_t output = 0; output < layer.output_size; ++output) {
             double total = parameters_[index].biases[output];
@@ -163,12 +166,16 @@ FeedForwardNetwork::forward_cache(const std::vector<double>& input) const {
             for (std::size_t input_index = 0; input_index < layer.input_size; ++input_index) {
                 total += row[input_index] * previous[input_index];
             }
-            pre_activation[output] = total;
-            activation[output] = apply_activation(total, layer.activation);
+            cache.pre_activations[index][output] = total;
+            cache.activations[index + 1][output] = apply_activation(total, layer.activation);
         }
-        cache.pre_activations.push_back(std::move(pre_activation));
-        cache.activations.push_back(std::move(activation));
     }
+}
+
+FeedForwardNetwork::ForwardCache
+FeedForwardNetwork::forward_cache(const std::vector<double>& input) const {
+    ForwardCache cache;
+    forward_into(input, cache);
     return cache;
 }
 
@@ -301,62 +308,162 @@ double FeedForwardNetwork::accuracy(const SupervisedDataset& dataset) const {
     return static_cast<double>(correct) / static_cast<double>(dataset.size());
 }
 
+void FeedForwardNetwork::accumulate_gradient(const std::vector<double>& features,
+                                             const std::vector<double>* targets,
+                                             const std::size_t label, const double scale,
+                                             std::vector<double>& flat,
+                                             Workspace& workspace) const {
+    forward_into(features, workspace.cache);
+    const ForwardCache& cache = workspace.cache;
+
+    if (targets != nullptr) {
+        workspace.delta =
+            output_delta(cache.pre_activations.back(), cache.activations.back(), *targets);
+    } else {
+        // The one-hot target is implied by `label`, so it is never materialized: under
+        // softmax_cross_entropy the output delta is simply p - y.
+        workspace.delta = softmax(cache.activations.back());
+        workspace.delta[label] -= 1.0;
+    }
+
+    // delta holds dL/dz for the layer currently being visited.
+    for (std::size_t index = layers_.size(); index-- > 0;) {
+        const DenseLayer& layer = layers_[index];
+        const std::vector<double>& inputs = cache.activations[index];
+        const std::vector<double>& delta = workspace.delta;
+
+        const std::size_t offset = layer_offsets_[index];
+        const std::size_t bias_offset = offset + layer.output_size * layer.input_size;
+
+        for (std::size_t output = 0; output < layer.output_size; ++output) {
+            const double unit_delta = delta[output];
+            const std::size_t row_offset = offset + output * layer.input_size;
+            for (std::size_t input = 0; input < layer.input_size; ++input) {
+                flat[row_offset + input] += scale * unit_delta * inputs[input];
+            }
+            flat[bias_offset + output] += scale * unit_delta;
+        }
+
+        if (index == 0) {
+            break;
+        }
+        // Propagate to the previous layer: delta_prev = (W^T delta) * g'(z_prev).
+        const DenseLayer& previous_layer = layers_[index - 1];
+        workspace.previous_delta.assign(previous_layer.output_size, 0.0);
+        for (std::size_t input = 0; input < layer.input_size; ++input) {
+            double total = 0.0;
+            for (std::size_t output = 0; output < layer.output_size; ++output) {
+                total += parameters_[index].weights[output][input] * delta[output];
+            }
+            workspace.previous_delta[input] =
+                total * activation_derivative(cache.pre_activations[index - 1][input],
+                                              cache.activations[index][input],
+                                              previous_layer.activation);
+        }
+        workspace.delta.swap(workspace.previous_delta);
+    }
+}
+
+void FeedForwardNetwork::apply_gradient_step(const std::vector<double>& flat,
+                                             const double learning_rate) {
+    for (std::size_t index = 0; index < layers_.size(); ++index) {
+        const DenseLayer& layer = layers_[index];
+        std::size_t cursor = layer_offsets_[index];
+        for (std::size_t output = 0; output < layer.output_size; ++output) {
+            std::vector<double>& row = parameters_[index].weights[output];
+            for (std::size_t input = 0; input < layer.input_size; ++input) {
+                row[input] -= learning_rate * flat[cursor++];
+            }
+        }
+        for (std::size_t output = 0; output < layer.output_size; ++output) {
+            parameters_[index].biases[output] -= learning_rate * flat[cursor++];
+        }
+    }
+}
+
 std::vector<double> FeedForwardNetwork::gradient(const SupervisedDataset& dataset) const {
     validate_for_network(dataset);
 
     std::vector<double> flat(parameter_count_, 0.0);
     const double scale = 1.0 / static_cast<double>(dataset.size());
-
-    // Offset of each layer's block inside the flat parameter vector.
-    std::vector<std::size_t> layer_offsets(layers_.size(), 0);
-    for (std::size_t index = 1; index < layers_.size(); ++index) {
-        layer_offsets[index] = layer_offsets[index - 1] +
-                               layers_[index - 1].output_size * layers_[index - 1].input_size +
-                               layers_[index - 1].output_size;
-    }
-
+    Workspace workspace;
     for (const auto& sample : dataset) {
-        const ForwardCache cache = forward_cache(sample.features);
-        // delta holds dL/dz for the layer currently being visited.
-        std::vector<double> delta =
-            output_delta(cache.pre_activations.back(), cache.activations.back(), sample.targets);
-
-        for (std::size_t index = layers_.size(); index-- > 0;) {
-            const DenseLayer& layer = layers_[index];
-            const std::vector<double>& inputs = cache.activations[index];
-
-            const std::size_t offset = layer_offsets[index];
-            const std::size_t bias_offset = offset + layer.output_size * layer.input_size;
-
-            for (std::size_t output = 0; output < layer.output_size; ++output) {
-                const double unit_delta = delta[output];
-                const std::size_t row_offset = offset + output * layer.input_size;
-                for (std::size_t input = 0; input < layer.input_size; ++input) {
-                    flat[row_offset + input] += scale * unit_delta * inputs[input];
-                }
-                flat[bias_offset + output] += scale * unit_delta;
-            }
-
-            if (index == 0) {
-                break;
-            }
-            // Propagate to the previous layer: delta_prev = (W^T delta) * g'(z_prev).
-            const DenseLayer& previous_layer = layers_[index - 1];
-            std::vector<double> previous_delta(previous_layer.output_size, 0.0);
-            for (std::size_t input = 0; input < layer.input_size; ++input) {
-                double total = 0.0;
-                for (std::size_t output = 0; output < layer.output_size; ++output) {
-                    total += parameters_[index].weights[output][input] * delta[output];
-                }
-                previous_delta[input] =
-                    total * activation_derivative(cache.pre_activations[index - 1][input],
-                                                  cache.activations[index][input],
-                                                  previous_layer.activation);
-            }
-            delta = std::move(previous_delta);
-        }
+        accumulate_gradient(sample.features, &sample.targets, 0, scale, flat, workspace);
     }
     return flat;
+}
+
+void FeedForwardNetwork::require_classification() const {
+    if (loss_ != Loss::softmax_cross_entropy) {
+        throw std::invalid_argument(
+            "the class-index overloads require the softmax_cross_entropy loss");
+    }
+}
+
+std::size_t FeedForwardNetwork::validate_labeled(const LabeledDataset& dataset) const {
+    require_classification();
+    const DatasetShape shape = validate_labeled_dataset(dataset);
+    if (shape.feature_count != input_size()) {
+        throw std::invalid_argument("feature count does not match the network input size");
+    }
+    if (shape.class_count > output_size()) {
+        throw std::invalid_argument("dataset contains a label outside the network output size");
+    }
+    return shape.feature_count;
+}
+
+std::vector<double> FeedForwardNetwork::gradient(const LabeledDataset& dataset) const {
+    static_cast<void>(validate_labeled(dataset));
+
+    std::vector<double> flat(parameter_count_, 0.0);
+    const double scale = 1.0 / static_cast<double>(dataset.size());
+    Workspace workspace;
+    for (const auto& sample : dataset) {
+        accumulate_gradient(sample.features, nullptr, sample.label, scale, flat, workspace);
+    }
+    return flat;
+}
+
+double FeedForwardNetwork::loss(const LabeledDataset& dataset) const {
+    static_cast<void>(validate_labeled(dataset));
+
+    double total = 0.0;
+    ForwardCache cache;
+    for (const auto& sample : dataset) {
+        forward_into(sample.features, cache);
+        const std::vector<double>& logits = cache.activations.back();
+        const double largest = *std::max_element(logits.begin(), logits.end());
+        double sum_of_exponentials = 0.0;
+        for (const double logit : logits) {
+            sum_of_exponentials += std::exp(logit - largest);
+        }
+        total += largest + std::log(sum_of_exponentials) - logits[sample.label];
+    }
+    return total / static_cast<double>(dataset.size());
+}
+
+double FeedForwardNetwork::accuracy(const LabeledDataset& dataset) const {
+    static_cast<void>(validate_labeled(dataset));
+
+    std::size_t correct = 0;
+    for (const auto& sample : dataset) {
+        if (predict_class(sample.features) == sample.label) {
+            ++correct;
+        }
+    }
+    return static_cast<double>(correct) / static_cast<double>(dataset.size());
+}
+
+std::vector<std::vector<std::size_t>>
+FeedForwardNetwork::confusion_matrix(const LabeledDataset& dataset) const {
+    static_cast<void>(validate_labeled(dataset));
+
+    std::vector<std::vector<std::size_t>> confusion(output_size(),
+                                                    std::vector<std::size_t>(output_size(), 0));
+    for (const auto& sample : dataset) {
+        ++confusion[sample.label][predict_class(sample.features)];
+    }
+    return confusion;
 }
 
 std::vector<double> FeedForwardNetwork::numerical_gradient(const SupervisedDataset& dataset,
@@ -424,9 +531,9 @@ void FeedForwardNetwork::set_parameters(const std::vector<double>& values) {
     }
 }
 
-NetworkTrainingResult FeedForwardNetwork::fit(const SupervisedDataset& dataset,
-                                              const NetworkTrainingConfig& config) {
-    validate_for_network(dataset);
+namespace {
+
+void validate_training_config(const NetworkTrainingConfig& config) {
     if (!std::isfinite(config.learning_rate) || config.learning_rate <= 0.0) {
         throw std::invalid_argument("learning_rate must be finite and positive");
     }
@@ -436,15 +543,26 @@ NetworkTrainingResult FeedForwardNetwork::fit(const SupervisedDataset& dataset,
     if (!std::isfinite(config.target_loss) || config.target_loss < 0.0) {
         throw std::invalid_argument("target_loss must be finite and non-negative");
     }
+}
 
+} // namespace
+
+// The two fit overloads share this loop. `Dataset` is either a SupervisedDataset of explicit
+// targets or a LabeledDataset of class indices; `accumulate` hides the difference.
+template <typename Dataset, typename Accumulate, typename Evaluate>
+static NetworkTrainingResult
+run_training(const Dataset& dataset, const NetworkTrainingConfig& config,
+             const std::size_t parameter_count, Accumulate accumulate, Evaluate evaluate) {
     std::vector<std::size_t> order(dataset.size());
     std::iota(order.begin(), order.end(), 0);
     std::mt19937 random_engine{config.seed};
     const std::size_t batch_size =
         config.batch_size == 0 ? dataset.size() : std::min(config.batch_size, dataset.size());
 
+    std::vector<double> batch_gradient(parameter_count, 0.0);
     std::vector<double> history;
     history.reserve(config.max_epochs);
+
     for (std::size_t epoch = 1; epoch <= config.max_epochs; ++epoch) {
         if (config.shuffle && batch_size < dataset.size()) {
             std::shuffle(order.begin(), order.end(), random_engine);
@@ -452,21 +570,13 @@ NetworkTrainingResult FeedForwardNetwork::fit(const SupervisedDataset& dataset,
 
         for (std::size_t begin = 0; begin < dataset.size(); begin += batch_size) {
             const std::size_t end = std::min(begin + batch_size, dataset.size());
-            SupervisedDataset batch;
-            batch.reserve(end - begin);
-            for (std::size_t position = begin; position < end; ++position) {
-                batch.push_back(dataset[order[position]]);
-            }
-
-            const std::vector<double> batch_gradient = gradient(batch);
-            std::vector<double> updated = parameters();
-            for (std::size_t index = 0; index < updated.size(); ++index) {
-                updated[index] -= config.learning_rate * batch_gradient[index];
-            }
-            set_parameters(updated);
+            // Samples are indexed in place and the gradient buffer is reused, so a batch is never
+            // copied and an epoch allocates nothing.
+            std::fill(batch_gradient.begin(), batch_gradient.end(), 0.0);
+            accumulate(order, begin, end, batch_gradient);
         }
 
-        const double epoch_loss = loss(dataset);
+        const double epoch_loss = evaluate();
         if (!std::isfinite(epoch_loss)) {
             throw std::runtime_error("training diverged to a non-finite loss");
         }
@@ -476,6 +586,138 @@ NetworkTrainingResult FeedForwardNetwork::fit(const SupervisedDataset& dataset,
         }
     }
     return {config.max_epochs, false, std::move(history)};
+}
+
+NetworkTrainingResult FeedForwardNetwork::fit(const SupervisedDataset& dataset,
+                                              const NetworkTrainingConfig& config) {
+    validate_for_network(dataset);
+    validate_training_config(config);
+
+    Workspace workspace;
+    return run_training(
+        dataset, config, parameter_count_,
+        [&](const std::vector<std::size_t>& order, const std::size_t begin, const std::size_t end,
+            std::vector<double>& flat) {
+            const double scale = 1.0 / static_cast<double>(end - begin);
+            for (std::size_t position = begin; position < end; ++position) {
+                const SupervisedSample& sample = dataset[order[position]];
+                accumulate_gradient(sample.features, &sample.targets, 0, scale, flat, workspace);
+            }
+            apply_gradient_step(flat, config.learning_rate);
+        },
+        [&] { return loss(dataset); });
+}
+
+NetworkTrainingResult FeedForwardNetwork::fit(const LabeledDataset& dataset,
+                                              const NetworkTrainingConfig& config) {
+    static_cast<void>(validate_labeled(dataset));
+    validate_training_config(config);
+
+    Workspace workspace;
+    return run_training(
+        dataset, config, parameter_count_,
+        [&](const std::vector<std::size_t>& order, const std::size_t begin, const std::size_t end,
+            std::vector<double>& flat) {
+            const double scale = 1.0 / static_cast<double>(end - begin);
+            for (std::size_t position = begin; position < end; ++position) {
+                const LabeledSample& sample = dataset[order[position]];
+                accumulate_gradient(sample.features, nullptr, sample.label, scale, flat, workspace);
+            }
+            apply_gradient_step(flat, config.learning_rate);
+        },
+        [&] { return loss(dataset); });
+}
+
+void FeedForwardNetwork::save(const std::string& path) const {
+    std::ofstream stream{path};
+    if (!stream) {
+        throw std::runtime_error("cannot open checkpoint for writing: " + path);
+    }
+
+    stream << "ml_scratch_feedforward 1\n"
+           << "loss " << static_cast<int>(loss_) << '\n'
+           << "layers " << layers_.size() << '\n';
+    for (const DenseLayer& layer : layers_) {
+        stream << layer.input_size << ' ' << layer.output_size << ' '
+               << static_cast<int>(layer.activation) << '\n';
+    }
+
+    const std::vector<double> flat = parameters();
+    stream << "parameters " << flat.size() << '\n';
+    // 17 significant digits round-trip an IEEE-754 double exactly.
+    stream << std::setprecision(17);
+    for (const double value : flat) {
+        stream << value << '\n';
+    }
+    if (!stream) {
+        throw std::runtime_error("failed while writing checkpoint: " + path);
+    }
+}
+
+FeedForwardNetwork FeedForwardNetwork::load(const std::string& path) {
+    std::ifstream stream{path};
+    if (!stream) {
+        throw std::runtime_error("cannot open checkpoint: " + path);
+    }
+
+    const auto expect = [&stream, &path](const std::string& keyword) {
+        std::string token;
+        if (!(stream >> token) || token != keyword) {
+            throw std::runtime_error("malformed checkpoint " + path + ": expected " + keyword);
+        }
+    };
+    const auto read_size = [&stream, &path] {
+        long long value = 0;
+        if (!(stream >> value) || value < 0) {
+            throw std::runtime_error("malformed checkpoint " + path + ": expected a size");
+        }
+        return static_cast<std::size_t>(value);
+    };
+
+    expect("ml_scratch_feedforward");
+    if (read_size() != 1) {
+        throw std::runtime_error("unsupported checkpoint version in " + path);
+    }
+    expect("loss");
+    const std::size_t loss_value = read_size();
+    if (loss_value > static_cast<std::size_t>(Loss::softmax_cross_entropy)) {
+        throw std::runtime_error("unknown loss in checkpoint " + path);
+    }
+    expect("layers");
+    const std::size_t layer_count = read_size();
+    if (layer_count == 0) {
+        throw std::runtime_error("checkpoint declares no layers: " + path);
+    }
+
+    std::vector<DenseLayer> layers;
+    layers.reserve(layer_count);
+    for (std::size_t index = 0; index < layer_count; ++index) {
+        const std::size_t input_size = read_size();
+        const std::size_t output_size = read_size();
+        const std::size_t activation = read_size();
+        if (activation > static_cast<std::size_t>(Activation::rectified_linear)) {
+            throw std::runtime_error("unknown activation in checkpoint " + path);
+        }
+        layers.push_back({input_size, output_size, static_cast<Activation>(activation)});
+    }
+
+    // The constructor re-validates the architecture, so a corrupted shape is rejected here.
+    FeedForwardNetwork network{std::move(layers), static_cast<Loss>(loss_value)};
+
+    expect("parameters");
+    const std::size_t count = read_size();
+    if (count != network.parameter_count()) {
+        throw std::runtime_error("checkpoint parameter count does not match its architecture: " +
+                                 path);
+    }
+    std::vector<double> values(count, 0.0);
+    for (double& value : values) {
+        if (!(stream >> value)) {
+            throw std::runtime_error("truncated checkpoint: " + path);
+        }
+    }
+    network.set_parameters(values);
+    return network;
 }
 
 GradientCheckResult check_gradient(const std::vector<double>& analytic,

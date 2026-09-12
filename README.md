@@ -35,7 +35,7 @@ meaningful differences.
 | Decision tree classification | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Backpropagation and gradient checking | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Softmax regression: MNIST | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
-| MLP: MNIST digit recognition | Planned | Planned | Planned | Planned | Planned | Planned |
+| MLP: MNIST digit recognition | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Optimizer comparisons | Planned | Planned | Planned | Planned | Planned | Planned |
 | Regularization, initialization, and normalization | Planned | Planned | Planned | Planned | Planned | Planned |
 | CNN: MNIST digit recognition | Planned | Planned | Planned | Planned | Planned | Planned |
@@ -224,6 +224,23 @@ its errors are structured — 5 read as 3, 4 as 9 — which is all a per-pixel l
 the [softmax regression mathematics](docs/mathematics/softmax_regression.md) and the
 [reproducible experiment](experiments/08_softmax_mnist/README.md).
 
+### An MLP on MNIST
+
+The same `FeedForwardNetwork` from the backpropagation milestone, applied to real data. Three
+things were added to make that practical and honest: training overloads that take class indices
+instead of one-hot targets and index the dataset in place, so a 54000-image epoch copies nothing
+and allocates nothing; text checkpoints that round-trip every parameter exactly at 17 significant
+digits; and a confusion matrix on the class-index path. Tests require the class-index and one-hot
+paths to produce identical losses, gradients, and training trajectories.
+
+The experiment reuses experiment 08's data, preprocessing, splits, batch size, and seed, and
+retrains the linear baseline inside the same run so the comparison is measured rather than quoted.
+Validation accuracy is measured after every epoch and the best parameters are checkpointed, then
+reloaded from disk to produce the evaluated model. Test accuracy rises from 92.21% to 98.14%, a 76%
+reduction in error rate, and the linear model's structured confusions fall furthest: 5 read as 3
+drops from 53 cases to 6. See [what a hidden layer adds](docs/mathematics/mlp_mnist.md) and the
+[reproducible experiment](experiments/09_mlp_mnist/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -244,12 +261,13 @@ search's checkerboard failure, reduced-error pruning and node compaction, hand-c
 network forward passes, losses and gradients, gradient checks across six architecture and loss
 combinations, detection of deliberately corrupted gradients, softmax cross-entropy gradients
 checked by hand and against central differences, agreement between the softmax model and the
-general network, IDX parsing including malformed files, multiclass metrics, and the project smoke
-test.
+general network, IDX parsing including malformed files, multiclass metrics, agreement between the
+class-index and one-hot training paths, checkpoint round trips and rejection of corrupted
+checkpoints, and the project smoke test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, eight
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, nine
 experiment executables, and CTest executables without downloading a testing framework. The tests
 never need a downloaded dataset: the IDX reader is exercised against small files the test writes
 itself.
@@ -269,6 +287,7 @@ ctest --test-dir build --output-on-failure
 
 # Needs MNIST; see scripts/download_mnist.sh
 ./build/cpp_softmax_mnist
+./build/cpp_mlp_mnist
 ```
 
 ## Planned roadmap

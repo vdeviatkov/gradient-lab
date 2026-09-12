@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace ml_scratch {
@@ -97,6 +98,17 @@ class FeedForwardNetwork {
     [[nodiscard]] double loss(const SupervisedDataset& dataset) const;
     [[nodiscard]] double accuracy(const SupervisedDataset& dataset) const;
 
+    // Classification overloads that take class indices instead of one-hot targets. They compute
+    // exactly the same thing as the SupervisedDataset versions applied to to_one_hot(dataset), but
+    // never materialize the target vectors, which is what makes a 60000 x 784 dataset practical.
+    // They require softmax_cross_entropy and one output per class.
+    [[nodiscard]] double loss(const LabeledDataset& dataset) const;
+    [[nodiscard]] double accuracy(const LabeledDataset& dataset) const;
+    // confusion[actual][predicted]
+    [[nodiscard]] std::vector<std::vector<std::size_t>>
+    confusion_matrix(const LabeledDataset& dataset) const;
+    [[nodiscard]] std::vector<double> gradient(const LabeledDataset& dataset) const;
+
     // Gradient of the dataset loss with respect to every parameter, in the flat layout above.
     [[nodiscard]] std::vector<double> gradient(const SupervisedDataset& dataset) const;
     // The same gradient estimated by central differences, used only to verify `gradient`.
@@ -107,9 +119,16 @@ class FeedForwardNetwork {
 
     NetworkTrainingResult fit(const SupervisedDataset& dataset,
                               const NetworkTrainingConfig& config = {});
+    NetworkTrainingResult fit(const LabeledDataset& dataset,
+                              const NetworkTrainingConfig& config = {});
 
     [[nodiscard]] std::vector<double> parameters() const;
     void set_parameters(const std::vector<double>& values);
+
+    // Text checkpoints holding the architecture, the loss, and every parameter. Values are written
+    // with 17 significant digits, which round-trips an IEEE-754 double exactly.
+    void save(const std::string& path) const;
+    [[nodiscard]] static FeedForwardNetwork load(const std::string& path);
     [[nodiscard]] std::size_t parameter_count() const noexcept { return parameter_count_; }
     [[nodiscard]] const std::vector<DenseLayer>& layers() const noexcept { return layers_; }
     [[nodiscard]] Loss loss_function() const noexcept { return loss_; }
@@ -129,7 +148,23 @@ class FeedForwardNetwork {
         std::vector<std::vector<double>> activations;
     };
 
+    // Reusable scratch space, so a training epoch does not allocate once per sample.
+    struct Workspace {
+        ForwardCache cache;
+        std::vector<double> delta;
+        std::vector<double> previous_delta;
+    };
+
     [[nodiscard]] ForwardCache forward_cache(const std::vector<double>& input) const;
+    void forward_into(const std::vector<double>& input, ForwardCache& cache) const;
+    // One sample's backward pass, accumulated into `flat`. `targets` may be null, in which case
+    // `label` selects the one-hot target under softmax_cross_entropy.
+    void accumulate_gradient(const std::vector<double>& features,
+                             const std::vector<double>* targets, std::size_t label, double scale,
+                             std::vector<double>& flat, Workspace& workspace) const;
+    void apply_gradient_step(const std::vector<double>& flat, double learning_rate);
+    void require_classification() const;
+    [[nodiscard]] std::size_t validate_labeled(const LabeledDataset& dataset) const;
     [[nodiscard]] double sample_loss(const std::vector<double>& outputs,
                                      const std::vector<double>& targets) const;
     // dL/dz for the final layer, which the loss and its output transform determine together.
@@ -142,6 +177,8 @@ class FeedForwardNetwork {
     Loss loss_;
     std::vector<LayerParameters> parameters_;
     std::size_t parameter_count_{0};
+    // Offset of each layer's block inside the flat parameter vector.
+    std::vector<std::size_t> layer_offsets_;
 };
 
 // Compares analytic and numerical gradients. The verdict uses the norm ratio described in

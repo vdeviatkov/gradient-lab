@@ -73,6 +73,10 @@ add_executable(cpp_softmax_mnist experiments/08_softmax_mnist/cpp_main.cpp)
 target_link_libraries(cpp_softmax_mnist PRIVATE ml_scratch_cpp)
 enable_project_warnings(cpp_softmax_mnist)
 
+add_executable(cpp_mlp_mnist experiments/09_mlp_mnist/cpp_main.cpp)
+target_link_libraries(cpp_mlp_mnist PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_mlp_mnist)
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
