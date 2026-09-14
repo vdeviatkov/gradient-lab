@@ -18,6 +18,7 @@ add_library(
     src/cpp/src/logic_gates.cpp
     src/cpp/src/mnist.cpp
     src/cpp/src/neural_network.cpp
+    src/cpp/src/optimizer.cpp
     src/cpp/src/pca.cpp
     src/cpp/src/perceptron.cpp
     src/cpp/src/project_info.cpp
@@ -77,6 +78,10 @@ add_executable(cpp_mlp_mnist experiments/09_mlp_mnist/cpp_main.cpp)
 target_link_libraries(cpp_mlp_mnist PRIVATE ml_scratch_cpp)
 enable_project_warnings(cpp_mlp_mnist)
 
+add_executable(cpp_optimizers experiments/10_optimizers/cpp_main.cpp)
+target_link_libraries(cpp_optimizers PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_optimizers)
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
@@ -118,6 +123,11 @@ if(BUILD_TESTING)
     target_link_libraries(cpp_neural_network_test PRIVATE ml_scratch_cpp)
     enable_project_warnings(cpp_neural_network_test)
     add_test(NAME cpp_neural_network_test COMMAND cpp_neural_network_test)
+
+    add_executable(cpp_optimizer_test tests/cpp/optimizer_test.cpp)
+    target_link_libraries(cpp_optimizer_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_optimizer_test)
+    add_test(NAME cpp_optimizer_test COMMAND cpp_optimizer_test)
 
     add_executable(cpp_softmax_regression_test tests/cpp/softmax_regression_test.cpp)
     target_link_libraries(cpp_softmax_regression_test PRIVATE ml_scratch_cpp)

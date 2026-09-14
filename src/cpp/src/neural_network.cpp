@@ -364,19 +364,18 @@ void FeedForwardNetwork::accumulate_gradient(const std::vector<double>& features
     }
 }
 
-void FeedForwardNetwork::apply_gradient_step(const std::vector<double>& flat,
-                                             const double learning_rate) {
+void FeedForwardNetwork::subtract_update(const std::vector<double>& update) {
     for (std::size_t index = 0; index < layers_.size(); ++index) {
         const DenseLayer& layer = layers_[index];
         std::size_t cursor = layer_offsets_[index];
         for (std::size_t output = 0; output < layer.output_size; ++output) {
             std::vector<double>& row = parameters_[index].weights[output];
             for (std::size_t input = 0; input < layer.input_size; ++input) {
-                row[input] -= learning_rate * flat[cursor++];
+                row[input] -= update[cursor++];
             }
         }
         for (std::size_t output = 0; output < layer.output_size; ++output) {
-            parameters_[index].biases[output] -= learning_rate * flat[cursor++];
+            parameters_[index].biases[output] -= update[cursor++];
         }
     }
 }
@@ -594,6 +593,8 @@ NetworkTrainingResult FeedForwardNetwork::fit(const SupervisedDataset& dataset,
     validate_training_config(config);
 
     Workspace workspace;
+    Optimizer optimizer{config.optimizer, parameter_count_};
+    std::vector<double> update;
     return run_training(
         dataset, config, parameter_count_,
         [&](const std::vector<std::size_t>& order, const std::size_t begin, const std::size_t end,
@@ -603,7 +604,8 @@ NetworkTrainingResult FeedForwardNetwork::fit(const SupervisedDataset& dataset,
                 const SupervisedSample& sample = dataset[order[position]];
                 accumulate_gradient(sample.features, &sample.targets, 0, scale, flat, workspace);
             }
-            apply_gradient_step(flat, config.learning_rate);
+            optimizer.compute_update(flat, config.learning_rate, update);
+            subtract_update(update);
         },
         [&] { return loss(dataset); });
 }
@@ -614,6 +616,8 @@ NetworkTrainingResult FeedForwardNetwork::fit(const LabeledDataset& dataset,
     validate_training_config(config);
 
     Workspace workspace;
+    Optimizer optimizer{config.optimizer, parameter_count_};
+    std::vector<double> update;
     return run_training(
         dataset, config, parameter_count_,
         [&](const std::vector<std::size_t>& order, const std::size_t begin, const std::size_t end,
@@ -623,7 +627,8 @@ NetworkTrainingResult FeedForwardNetwork::fit(const LabeledDataset& dataset,
                 const LabeledSample& sample = dataset[order[position]];
                 accumulate_gradient(sample.features, nullptr, sample.label, scale, flat, workspace);
             }
-            apply_gradient_step(flat, config.learning_rate);
+            optimizer.compute_update(flat, config.learning_rate, update);
+            subtract_update(update);
         },
         [&] { return loss(dataset); });
 }

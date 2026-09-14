@@ -36,7 +36,7 @@ meaningful differences.
 | Backpropagation and gradient checking | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Softmax regression: MNIST | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | MLP: MNIST digit recognition | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
-| Optimizer comparisons | Planned | Planned | Planned | Planned | Planned | Planned |
+| Optimizer comparisons | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Regularization, initialization, and normalization | Planned | Planned | Planned | Planned | Planned | Planned |
 | CNN: MNIST digit recognition | Planned | Planned | Planned | Planned | Planned | Planned |
 | Residual network: image classification | Planned | Planned | Planned | Planned | Planned | Planned |
@@ -241,6 +241,30 @@ reduction in error rate, and the linear model's structured confusions fall furth
 drops from 53 cases to 6. See [what a hidden layer adds](docs/mathematics/mlp_mnist.md) and the
 [reproducible experiment](experiments/09_mlp_mnist/README.md).
 
+### Optimizer comparisons
+
+An `Optimizer` that turns a gradient into an update: plain gradient descent, momentum, Nesterov
+momentum, RMSProp, and Adam. It owns only its own state and hyperparameters and receives the
+learning rate per step, so a later milestone can add a schedule without touching the update rules.
+`NetworkTrainingConfig` gained an `OptimizerConfig` whose default is plain gradient descent, and the
+backpropagation experiment's output is byte-identical before and after the change.
+
+The tests check each rule against its recursion by hand rather than only that training improves:
+momentum's geometric series and its asymptotic step, Nesterov braking sooner on a reversed gradient,
+RMSProp equalizing steps across gradients four orders of magnitude apart, and Adam's bias correction
+producing a first step of about the learning rate even for a gradient of `1e-6`. One test records a
+consequence that is easy to overlook — RMSProp at a fixed learning rate does not converge on
+`f(x) = x²/2` but settles into a limit cycle at exactly `lr/2`, which is the concrete reason
+schedules exist.
+
+The experiment separates the batch-size axis from the update-rule axis, gives each rule a rate that
+suits it, and reports update counts and wall-clock time next to the losses. Two of its findings cut
+against expectation: raising the full-batch learning rate made the loss *worse* rather than
+recovering the missing updates, and across a four-decade sweep plain gradient descent was the
+*least* sensitive rule — Adam is flatter only inside the decade it is normally run in. See the
+[optimizer mathematics](docs/mathematics/optimizers.md) and the
+[reproducible experiment](experiments/10_optimizers/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -263,11 +287,13 @@ combinations, detection of deliberately corrupted gradients, softmax cross-entro
 checked by hand and against central differences, agreement between the softmax model and the
 general network, IDX parsing including malformed files, multiclass metrics, agreement between the
 class-index and one-hot training paths, checkpoint round trips and rejection of corrupted
-checkpoints, and the project smoke test.
+checkpoints, each optimizer's update recursion verified by hand, Adam's bias correction, RMSProp's
+fixed-rate limit cycle, the adaptive rules on an ill-conditioned quadratic, and the project smoke
+test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, nine
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, ten
 experiment executables, and CTest executables without downloading a testing framework. The tests
 never need a downloaded dataset: the IDX reader is exercised against small files the test writes
 itself.
@@ -288,6 +314,7 @@ ctest --test-dir build --output-on-failure
 # Needs MNIST; see scripts/download_mnist.sh
 ./build/cpp_softmax_mnist
 ./build/cpp_mlp_mnist
+./build/cpp_optimizers
 ```
 
 ## Planned roadmap

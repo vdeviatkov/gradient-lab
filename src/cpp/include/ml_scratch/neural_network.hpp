@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ml_scratch/dataset.hpp"
+#include "ml_scratch/optimizer.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -36,6 +37,9 @@ struct DenseLayer {
 };
 
 struct NetworkTrainingConfig {
+    // The update rule. Its default is plain gradient descent, so the learning rate below is the
+    // only knob unless a different kind is chosen.
+    OptimizerConfig optimizer{};
     double learning_rate{0.1};
     std::size_t max_epochs{1'000};
     // Zero means one full-batch update per epoch.
@@ -162,7 +166,8 @@ class FeedForwardNetwork {
     void accumulate_gradient(const std::vector<double>& features,
                              const std::vector<double>* targets, std::size_t label, double scale,
                              std::vector<double>& flat, Workspace& workspace) const;
-    void apply_gradient_step(const std::vector<double>& flat, double learning_rate);
+    // Subtracts an already-scaled update from the parameters, walking the same flat layout.
+    void subtract_update(const std::vector<double>& update);
     void require_classification() const;
     [[nodiscard]] std::size_t validate_labeled(const LabeledDataset& dataset) const;
     [[nodiscard]] double sample_loss(const std::vector<double>& outputs,
