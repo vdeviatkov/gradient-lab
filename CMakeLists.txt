@@ -82,6 +82,10 @@ add_executable(cpp_optimizers experiments/10_optimizers/cpp_main.cpp)
 target_link_libraries(cpp_optimizers PRIVATE ml_scratch_cpp)
 enable_project_warnings(cpp_optimizers)
 
+add_executable(cpp_regularization experiments/11_regularization/cpp_main.cpp)
+target_link_libraries(cpp_regularization PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_regularization)
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
@@ -123,6 +127,11 @@ if(BUILD_TESTING)
     target_link_libraries(cpp_neural_network_test PRIVATE ml_scratch_cpp)
     enable_project_warnings(cpp_neural_network_test)
     add_test(NAME cpp_neural_network_test COMMAND cpp_neural_network_test)
+
+    add_executable(cpp_regularization_test tests/cpp/regularization_test.cpp)
+    target_link_libraries(cpp_regularization_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_regularization_test)
+    add_test(NAME cpp_regularization_test COMMAND cpp_regularization_test)
 
     add_executable(cpp_optimizer_test tests/cpp/optimizer_test.cpp)
     target_link_libraries(cpp_optimizer_test PRIVATE ml_scratch_cpp)

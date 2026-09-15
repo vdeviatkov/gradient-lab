@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -28,12 +29,66 @@ enum class Loss {
     softmax_cross_entropy,
 };
 
+enum class Normalization {
+    none,
+    // Standardizes each unit across the samples of a mini-batch, then rescales with a learned
+    // gamma and beta. Training and inference differ: training uses the batch's own statistics
+    // while inference uses a running average collected during training.
+    batch,
+    // Standardizes each sample across its own units. It involves no batch statistics, so training
+    // and inference compute exactly the same function and the batch size is irrelevant.
+    layer,
+};
+
+enum class Initialization {
+    // He scaling for a rectified-linear layer, Glorot for every other activation. The default.
+    automatic,
+    glorot_uniform,
+    he_uniform,
+    // Uniform over [-scale, scale], with the scale supplied by InitializationConfig.
+    fixed_uniform,
+    // Every weight zero. Included so an experiment can measure why symmetry has to be broken.
+    zeros,
+};
+
+struct InitializationConfig {
+    Initialization kind{Initialization::automatic};
+    // Used by fixed_uniform only.
+    double scale{0.01};
+
+    bool operator==(const InitializationConfig&) const = default;
+};
+
 struct DenseLayer {
     std::size_t input_size;
     std::size_t output_size;
     Activation activation;
+    // Applied to the pre-activation, before the activation function.
+    Normalization normalization{Normalization::none};
+    // Probability of dropping each output during training, using inverted dropout so that no
+    // rescaling is needed at inference. Zero disables it.
+    double dropout_rate{0.0};
 
     bool operator==(const DenseLayer&) const = default;
+};
+
+// Penalties on the weights. Biases and normalization parameters are never penalized: they shift a
+// response rather than scale it, so shrinking them does not reduce model complexity.
+struct RegularizationConfig {
+    double l1{0.0};
+    double l2{0.0};
+
+    bool operator==(const RegularizationConfig&) const = default;
+};
+
+// Stops training once validation loss has failed to improve for `patience` consecutive epochs, and
+// restores the parameters from the best epoch. Requires a validation split; zero disables it.
+struct EarlyStoppingConfig {
+    std::size_t patience{0};
+    // An epoch counts as an improvement only if it beats the best loss by more than this.
+    double min_improvement{0.0};
+
+    bool operator==(const EarlyStoppingConfig&) const = default;
 };
 
 struct NetworkTrainingConfig {
@@ -47,12 +102,22 @@ struct NetworkTrainingConfig {
     bool shuffle{true};
     std::uint32_t seed{0};
     double target_loss{0.0};
+    RegularizationConfig regularization{};
+    EarlyStoppingConfig early_stopping{};
+    // Decay of the running statistics batch normalization keeps for inference.
+    double normalization_momentum{0.9};
 };
 
 struct NetworkTrainingResult {
     std::size_t epochs;
     bool converged;
+    // The objective actually minimized: the data loss plus any weight penalty.
     std::vector<double> loss_per_epoch;
+    // Populated only when a validation split was supplied.
+    std::vector<double> validation_loss_per_epoch;
+    // One-based epoch with the lowest validation loss, or zero without a validation split.
+    std::size_t best_epoch{0};
+    bool stopped_early{false};
 
     bool operator==(const NetworkTrainingResult&) const = default;
 };
@@ -90,7 +155,8 @@ struct GradientCheckResult {
 // unit 1, and so on) followed by that layer's biases.
 class FeedForwardNetwork {
   public:
-    FeedForwardNetwork(std::vector<DenseLayer> layers, Loss loss, std::uint32_t seed = 0);
+    FeedForwardNetwork(std::vector<DenseLayer> layers, Loss loss, std::uint32_t seed = 0,
+                       InitializationConfig initialization = {});
 
     // Raw final-layer values. For the cross-entropy losses these are logits, not probabilities.
     [[nodiscard]] std::vector<double> forward(const std::vector<double>& input) const;
@@ -125,9 +191,32 @@ class FeedForwardNetwork {
                               const NetworkTrainingConfig& config = {});
     NetworkTrainingResult fit(const LabeledDataset& dataset,
                               const NetworkTrainingConfig& config = {});
+    // Overloads that measure validation loss each epoch and enable early stopping.
+    NetworkTrainingResult fit(const SupervisedDataset& dataset, const SupervisedDataset& validation,
+                              const NetworkTrainingConfig& config);
+    NetworkTrainingResult fit(const LabeledDataset& dataset, const LabeledDataset& validation,
+                              const NetworkTrainingConfig& config);
+
+    // The weight penalty alone, for the given coefficients.
+    [[nodiscard]] double weight_penalty(const RegularizationConfig& regularization) const;
+
+    // Training-mode loss and gradient over a batch treated as one unit, using the batch's own
+    // statistics wherever a layer normalizes across the batch. These exist so that gradient
+    // checking can verify the path batch normalization actually trains through: `loss` and
+    // `gradient` above run in inference mode, where the running statistics are constants and the
+    // samples are independent. Neither updates the running statistics. Dropout never fires here,
+    // since a stochastic mask would make the check meaningless.
+    [[nodiscard]] double batch_training_loss(const LabeledDataset& batch);
+    [[nodiscard]] std::vector<double> batch_training_gradient(const LabeledDataset& batch);
+    [[nodiscard]] bool uses_batch_normalization() const noexcept;
+    [[nodiscard]] bool uses_dropout() const noexcept;
 
     [[nodiscard]] std::vector<double> parameters() const;
     void set_parameters(const std::vector<double>& values);
+    // Batch normalization's running mean and variance. They are state rather than parameters: no
+    // gradient touches them, but inference depends on them, so checkpoints carry them.
+    [[nodiscard]] std::vector<double> running_statistics() const;
+    void set_running_statistics(const std::vector<double>& values);
 
     // Text checkpoints holding the architecture, the loss, and every parameter. Values are written
     // with 17 significant digits, which round-trips an IEEE-754 double exactly.
@@ -144,12 +233,26 @@ class FeedForwardNetwork {
         // weights[output][input]
         FeatureMatrix weights;
         std::vector<double> biases;
+        // Normalization scale and shift, empty when the layer is not normalized.
+        std::vector<double> scale;
+        std::vector<double> shift;
+        // Batch normalization's inference statistics, empty otherwise.
+        std::vector<double> running_mean;
+        std::vector<double> running_variance;
     };
 
+    // The chain through one layer is s = Wa + b, n = standardize(s), y = scale*n + shift,
+    // a' = g(y), out = a' * dropout_factor. Every intermediate is kept because the backward pass
+    // needs it; without normalization or dropout, y = s and out = a'.
     struct ForwardCache {
-        // Pre-activations and activations for each layer; activations[0] is the input.
-        std::vector<std::vector<double>> pre_activations;
+        // activations[0] is the input; activations[l + 1] is layer l's output after dropout.
         std::vector<std::vector<double>> activations;
+        std::vector<std::vector<double>> pre_activations;   // s
+        std::vector<std::vector<double>> normalized;        // n
+        std::vector<std::vector<double>> activation_inputs; // y
+        std::vector<std::vector<double>> activation_values; // g(y), before dropout
+        std::vector<std::vector<double>> dropout_factors;   // empty when the layer keeps everything
+        std::vector<double> inverse_deviation;              // 1/sqrt(var + eps), layer norm only
     };
 
     // Reusable scratch space, so a training epoch does not allocate once per sample.
@@ -157,18 +260,48 @@ class FeedForwardNetwork {
         ForwardCache cache;
         std::vector<double> delta;
         std::vector<double> previous_delta;
+        std::vector<double> normalized;
+    };
+
+    // Batch normalization couples the samples of a mini-batch, so its forward and backward passes
+    // have to see the whole batch at once. Every other feature is per-sample, which is why the
+    // sample-at-a-time path is kept for networks without it.
+    struct BatchWorkspace {
+        // [layer][sample][unit]
+        std::vector<FeatureMatrix> pre_activations;
+        std::vector<FeatureMatrix> normalized;
+        std::vector<FeatureMatrix> activations;
+        std::vector<FeatureMatrix> deltas;
+        std::vector<std::vector<double>> batch_mean;
+        std::vector<std::vector<double>> batch_inverse_deviation;
     };
 
     [[nodiscard]] ForwardCache forward_cache(const std::vector<double>& input) const;
-    void forward_into(const std::vector<double>& input, ForwardCache& cache) const;
+    // `training` selects batch normalization's statistics source and whether dropout fires.
+    // `dropout_engine` may be null when no layer drops units.
+    void forward_into(const std::vector<double>& input, ForwardCache& cache, bool training = false,
+                      std::mt19937* dropout_engine = nullptr) const;
     // One sample's backward pass, accumulated into `flat`. `targets` may be null, in which case
     // `label` selects the one-hot target under softmax_cross_entropy.
     void accumulate_gradient(const std::vector<double>& features,
                              const std::vector<double>* targets, std::size_t label, double scale,
-                             std::vector<double>& flat, Workspace& workspace) const;
+                             std::vector<double>& flat, Workspace& workspace, bool training = false,
+                             std::mt19937* dropout_engine = nullptr) const;
     // Subtracts an already-scaled update from the parameters, walking the same flat layout.
     void subtract_update(const std::vector<double>& update);
     void require_classification() const;
+    void add_penalty_gradient(const RegularizationConfig& regularization,
+                              std::vector<double>& flat) const;
+    // Batch-at-a-time forward and backward, used only when a layer normalizes across the batch.
+    // Returns the mean loss over the batch. `update_running` controls whether batch
+    // normalization's inference statistics absorb this batch.
+    double accumulate_batch_gradient(const FeatureMatrix& inputs,
+                                     const std::vector<const std::vector<double>*>& targets,
+                                     const std::vector<std::size_t>& labels, double scale,
+                                     std::vector<double>& flat, BatchWorkspace& workspace,
+                                     bool training, std::mt19937* dropout_engine,
+                                     bool update_running = true);
+    [[nodiscard]] std::size_t normalization_offset(std::size_t layer) const;
     [[nodiscard]] std::size_t validate_labeled(const LabeledDataset& dataset) const;
     [[nodiscard]] double sample_loss(const std::vector<double>& outputs,
                                      const std::vector<double>& targets) const;
@@ -184,6 +317,8 @@ class FeedForwardNetwork {
     std::size_t parameter_count_{0};
     // Offset of each layer's block inside the flat parameter vector.
     std::vector<std::size_t> layer_offsets_;
+    // Decay used when updating batch normalization's running statistics.
+    double normalization_momentum_{0.9};
 };
 
 // Compares analytic and numerical gradients. The verdict uses the norm ratio described in
@@ -196,5 +331,13 @@ class FeedForwardNetwork {
 [[nodiscard]] GradientCheckResult check_gradient(const FeedForwardNetwork& network,
                                                  const SupervisedDataset& dataset,
                                                  double epsilon = 1e-5, double tolerance = 1e-7);
+
+// Verifies the training-mode gradient over one batch, which is the only way to check a network
+// that normalizes across the batch: its loss is a function of the whole batch jointly, so the
+// numerical difference has to perturb that same joint function.
+[[nodiscard]] GradientCheckResult check_batch_gradient(FeedForwardNetwork& network,
+                                                       const LabeledDataset& batch,
+                                                       double epsilon = 1e-5,
+                                                       double tolerance = 1e-7);
 
 } // namespace ml_scratch

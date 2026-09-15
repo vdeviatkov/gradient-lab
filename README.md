@@ -37,7 +37,7 @@ meaningful differences.
 | Softmax regression: MNIST | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | MLP: MNIST digit recognition | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Optimizer comparisons | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
-| Regularization, initialization, and normalization | Planned | Planned | Planned | Planned | Planned | Planned |
+| Regularization, initialization, and normalization | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | CNN: MNIST digit recognition | Planned | Planned | Planned | Planned | Planned | Planned |
 | Residual network: image classification | Planned | Planned | Planned | Planned | Planned | Planned |
 | Conditional GAN: MNIST digit generation | Planned | Planned | Planned | Planned | Planned | Planned |
@@ -265,6 +265,30 @@ recovering the missing updates, and across a four-decade sweep plain gradient de
 [optimizer mathematics](docs/mathematics/optimizers.md) and the
 [reproducible experiment](experiments/10_optimizers/README.md).
 
+### Initialization, regularization, and normalization
+
+`FeedForwardNetwork` gained selectable weight initialization (Glorot, He, a fixed scale, or zeros),
+L1 and L2 penalties on the weights, inverted dropout, early stopping with best-parameter restore,
+and both batch and layer normalization. Everything is off by default, and the backpropagation
+experiment's output is byte-identical before and after the change.
+
+Batch normalization makes one sample's loss depend on every other sample in its batch, so it needs a
+batch-at-a-time forward and backward pass; the sample-at-a-time path is kept for everything else,
+and a test requires the two to agree where both apply. Its backward pass and layer normalization's
+share one routine — the same formula with the reduction taken over a different axis — and both are
+verified by gradient checking, batch normalization through a batch-level loss because a per-sample
+check would be differentiating the wrong function. Dropout makes the loss stochastic, so gradient
+checking refuses a network that uses it and it is verified by its deterministic properties instead.
+
+Two of the experiment's results cut against the usual story: no weight penalty recovered much of an
+8.5-point generalization gap, because that gap comes from having 2000 training images rather than
+from oversized weights; and early stopping's restored epoch was marginally *worse* on test than
+training to the end, a compute saving rather than an accuracy win. The clearest effect is
+normalization's: at a learning rate that collapsed a plain network to 38% accuracy, the
+batch-normalized one scored 89%. See the
+[mathematics](docs/mathematics/regularization.md) and the
+[reproducible experiment](experiments/11_regularization/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -288,12 +312,15 @@ checked by hand and against central differences, agreement between the softmax m
 general network, IDX parsing including malformed files, multiclass metrics, agreement between the
 class-index and one-hot training paths, checkpoint round trips and rejection of corrupted
 checkpoints, each optimizer's update recursion verified by hand, Adam's bias correction, RMSProp's
-fixed-rate limit cycle, the adaptive rules on an ill-conditioned quadratic, and the project smoke
-test.
+fixed-rate limit cycle, the adaptive rules on an ill-conditioned quadratic, initialization scales
+and the identical gradients zero initialization produces, L1 and L2 penalty values and their
+gradients, gradient checks for both normalizations including batch normalization's batch-level
+training path, dropout's determinism at inference, early stopping restoring its best epoch, and the
+project smoke test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, ten
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, eleven
 experiment executables, and CTest executables without downloading a testing framework. The tests
 never need a downloaded dataset: the IDX reader is exercised against small files the test writes
 itself.
@@ -315,6 +342,7 @@ ctest --test-dir build --output-on-failure
 ./build/cpp_softmax_mnist
 ./build/cpp_mlp_mnist
 ./build/cpp_optimizers
+./build/cpp_regularization
 ```
 
 ## Planned roadmap
