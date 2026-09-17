@@ -9,6 +9,8 @@ project(
 
 add_library(
     ml_scratch_cpp STATIC
+    src/cpp/src/cifar10.cpp
+    src/cpp/src/convolution.cpp
     src/cpp/src/dataset.cpp
     src/cpp/src/decision_tree.cpp
     src/cpp/src/deterministic_random.cpp
@@ -86,6 +88,14 @@ add_executable(cpp_regularization experiments/11_regularization/cpp_main.cpp)
 target_link_libraries(cpp_regularization PRIVATE ml_scratch_cpp)
 enable_project_warnings(cpp_regularization)
 
+add_executable(cpp_cnn_mnist experiments/12_cnn_mnist/cpp_main.cpp)
+target_link_libraries(cpp_cnn_mnist PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_cnn_mnist)
+
+add_executable(cpp_resnet_cifar10 experiments/13_residual/cpp_main.cpp)
+target_link_libraries(cpp_resnet_cifar10 PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_resnet_cifar10)
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
@@ -127,6 +137,16 @@ if(BUILD_TESTING)
     target_link_libraries(cpp_neural_network_test PRIVATE ml_scratch_cpp)
     enable_project_warnings(cpp_neural_network_test)
     add_test(NAME cpp_neural_network_test COMMAND cpp_neural_network_test)
+
+    add_executable(cpp_residual_test tests/cpp/residual_test.cpp)
+    target_link_libraries(cpp_residual_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_residual_test)
+    add_test(NAME cpp_residual_test COMMAND cpp_residual_test)
+
+    add_executable(cpp_convolution_test tests/cpp/convolution_test.cpp)
+    target_link_libraries(cpp_convolution_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_convolution_test)
+    add_test(NAME cpp_convolution_test COMMAND cpp_convolution_test)
 
     add_executable(cpp_regularization_test tests/cpp/regularization_test.cpp)
     target_link_libraries(cpp_regularization_test PRIVATE ml_scratch_cpp)

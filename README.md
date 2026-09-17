@@ -38,8 +38,8 @@ meaningful differences.
 | MLP: MNIST digit recognition | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Optimizer comparisons | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Regularization, initialization, and normalization | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
-| CNN: MNIST digit recognition | Planned | Planned | Planned | Planned | Planned | Planned |
-| Residual network: image classification | Planned | Planned | Planned | Planned | Planned | Planned |
+| CNN: MNIST digit recognition | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
+| Residual network: image classification | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Conditional GAN: MNIST digit generation | Planned | Planned | Planned | Planned | Planned | Planned |
 | RNN: character-level sequence modeling | Planned | Planned | Planned | Planned | Planned | Planned |
 | LSTM and GRU: character-level sequence modeling | Planned | Planned | Planned | Planned | Planned | Planned |
@@ -289,6 +289,48 @@ batch-normalized one scored 89%. See the
 [mathematics](docs/mathematics/regularization.md) and the
 [reproducible experiment](experiments/11_regularization/README.md).
 
+### A convolutional network on MNIST
+
+A `ConvolutionalNetwork` built from convolution, max and average pooling, flatten, and dense layers,
+with explicitly derived gradients for each. Activations flow as flat vectors with an explicit shape
+rather than nested tensors, and every layer's output shape is derived at construction, so an
+impossible architecture is rejected before training. It is a separate class from
+`FeedForwardNetwork` — shaped activations and several layer kinds — but shares its activations,
+losses, optimizers, and flat-parameter convention, so the same gradient checker verifies both.
+
+Every layer kind's backward pass is verified against central differences, including stride, padding,
+both poolings, and stacked convolutions. Weight sharing is tested as a property rather than assumed:
+the same feature placed at two positions must produce the same response, translated.
+
+The experiment holds the optimizer, schedule, and data fixed so only architecture varies. The CNN
+reached 96.88% test accuracy with 5258 parameters against an MLP's 94.20% with 101770 — 19.4x fewer
+— and lost half as much accuracy when the test digits were shifted two pixels. Two results are worth
+the read: max and average pooling were indistinguishable on centered data yet differed by 4.3 points
+once digits moved, and the CNN cost 4.3x the MLP's training time despite the parameter gap, because
+weight sharing divides parameters and leaves arithmetic alone. See the
+[convolution mathematics](docs/mathematics/convolution.md) and the
+[reproducible experiment](experiments/12_cnn_mnist/README.md).
+
+### Residual connections
+
+Both networks gained an optional identity skip: a layer computes `g(Wx + b + x)` instead of
+`g(Wx + b)`, with the addition placed before the activation as in the original residual network.
+The two terms must have the same shape, so a residual convolution's filter count must match its
+input channels and its stride and padding must preserve the spatial size. Defaults are unchanged and
+the backpropagation experiment's output is byte-identical. A CIFAR-10 binary reader was added
+alongside the MNIST one, tested against files the test writes itself.
+
+The experiment isolates the skip in an MLP before introducing convolutional blocks, and the
+measurement is not the expected one. A plain 20-layer stack loses most of its first-layer gradient
+and degrades with depth, as advertised — but a **bare** residual stack does not fix it. Its
+first-layer gradient *explodes* to `4.0e+03`, four orders of magnitude above the plain stack's, and
+its accuracy at depth 20 is worse than plain. The skip trades a vanishing gradient for a growing
+one, because each block adds its input back and the activations compound. Only with a normalization
+inside the block does the picture invert: the gradient norm stays essentially flat from 2 blocks to
+20, and it becomes the only variant that does not degrade. That is why a residual block in practice
+is never just a skip. See the [residual mathematics](docs/mathematics/residual.md) and the
+[reproducible experiment](experiments/13_residual/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -316,11 +358,15 @@ fixed-rate limit cycle, the adaptive rules on an ill-conditioned quadratic, init
 and the identical gradients zero initialization produces, L1 and L2 penalty values and their
 gradients, gradient checks for both normalizations including batch normalization's batch-level
 training path, dropout's determinism at inference, early stopping restoring its best epoch, and the
-project smoke test.
+convolution and pooling output shapes, hand-computed convolution and pooling values, gradient
+checks for every convolutional layer kind including stride and padding, translation equivariance
+from weight sharing, convolutional checkpoint round trips, a zeroed residual layer being exactly the identity, gradient
+checks through residual dense and convolutional blocks, the first-layer gradient a deep skip
+preserves, CIFAR-10 binary parsing including malformed records, and the project smoke test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, eleven
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, thirteen
 experiment executables, and CTest executables without downloading a testing framework. The tests
 never need a downloaded dataset: the IDX reader is exercised against small files the test writes
 itself.
@@ -343,6 +389,10 @@ ctest --test-dir build --output-on-failure
 ./build/cpp_mlp_mnist
 ./build/cpp_optimizers
 ./build/cpp_regularization
+./build/cpp_cnn_mnist
+
+# Needs MNIST and CIFAR-10; see scripts/download_cifar10.sh
+./build/cpp_resnet_cifar10
 ```
 
 ## Planned roadmap

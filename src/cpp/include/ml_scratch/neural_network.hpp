@@ -68,6 +68,11 @@ struct DenseLayer {
     // Probability of dropping each output during training, using inverted dropout so that no
     // rescaling is needed at inference. Zero disables it.
     double dropout_rate{0.0};
+    // An identity skip connection: the layer's input is added to its pre-activation, so it
+    // computes g(Wx + b + x) instead of g(Wx + b). Requires input_size == output_size, since
+    // the two terms must have the same shape to be added. Addition before the activation matches
+    // the placement in the original residual network.
+    bool residual{false};
 
     bool operator==(const DenseLayer&) const = default;
 };

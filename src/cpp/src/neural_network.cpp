@@ -92,6 +92,11 @@ FeedForwardNetwork::FeedForwardNetwork(std::vector<DenseLayer> layers, const Los
         if (!std::isfinite(rate) || rate < 0.0 || rate >= 1.0) {
             throw std::invalid_argument("dropout_rate must be finite and in the interval [0, 1)");
         }
+        if (layers_[index].residual && layers_[index].input_size != layers_[index].output_size) {
+            throw std::invalid_argument(
+                "a residual layer must have equal input and output sizes, since the skip adds the "
+                "input to the pre-activation");
+        }
         if (layers_[index].normalization == Normalization::layer &&
             layers_[index].output_size < 2) {
             throw std::invalid_argument(
@@ -277,7 +282,9 @@ void FeedForwardNetwork::forward_into(const std::vector<double>& input, ForwardC
             for (std::size_t input_index = 0; input_index < layer.input_size; ++input_index) {
                 total += row[input_index] * previous[input_index];
             }
-            cache.pre_activations[index][output] = total;
+            // The identity term joins the affine output before normalization and activation.
+            cache.pre_activations[index][output] =
+                layer.residual ? total + previous[output] : total;
         }
 
         std::vector<double>& scores = cache.pre_activations[index];
@@ -569,6 +576,11 @@ void FeedForwardNetwork::accumulate_gradient(const std::vector<double>& features
             for (std::size_t output = 0; output < layer.output_size; ++output) {
                 total += parameters_[index].weights[output][input] * workspace.delta[output];
             }
+            // The skip carries the gradient straight through, unmultiplied by any weight matrix.
+            // That second path is what keeps a deep stack's early gradients from vanishing.
+            if (layer.residual) {
+                total += workspace.delta[input];
+            }
             if (!factors.empty()) {
                 total *= factors[input];
             }
@@ -617,7 +629,8 @@ double FeedForwardNetwork::accumulate_batch_gradient(
                 for (std::size_t input = 0; input < layer.input_size; ++input) {
                     total += row[input] * previous[sample][input];
                 }
-                workspace.pre_activations[index][sample][output] = total;
+                workspace.pre_activations[index][sample][output] =
+                    layer.residual ? total + previous[sample][output] : total;
             }
         }
 
@@ -801,6 +814,9 @@ double FeedForwardNetwork::accumulate_batch_gradient(
                 double total = 0.0;
                 for (std::size_t output = 0; output < layer.output_size; ++output) {
                     total += parameters_[index].weights[output][input] * deltas[sample][output];
+                }
+                if (layer.residual) {
+                    total += deltas[sample][input];
                 }
                 if (!dropout_factors[index - 1].empty()) {
                     total *= dropout_factors[index - 1][sample][input];
@@ -1330,14 +1346,14 @@ void FeedForwardNetwork::save(const std::string& path) const {
         throw std::runtime_error("cannot open checkpoint for writing: " + path);
     }
 
-    stream << "ml_scratch_feedforward 2\n"
+    stream << "ml_scratch_feedforward 3\n"
            << "loss " << static_cast<int>(loss_) << '\n'
            << "layers " << layers_.size() << '\n'
            << std::setprecision(17);
     for (const DenseLayer& layer : layers_) {
         stream << layer.input_size << ' ' << layer.output_size << ' '
                << static_cast<int>(layer.activation) << ' ' << static_cast<int>(layer.normalization)
-               << ' ' << layer.dropout_rate << '\n';
+               << ' ' << layer.dropout_rate << ' ' << (layer.residual ? 1 : 0) << '\n';
     }
 
     const std::vector<double> flat = parameters();
@@ -1381,7 +1397,7 @@ FeedForwardNetwork FeedForwardNetwork::load(const std::string& path) {
 
     expect("ml_scratch_feedforward");
     const std::size_t version = read_size();
-    if (version != 1 && version != 2) {
+    if (version < 1 || version > 3) {
         throw std::runtime_error("unsupported checkpoint version in " + path);
     }
     expect("loss");
@@ -1405,9 +1421,11 @@ FeedForwardNetwork FeedForwardNetwork::load(const std::string& path) {
             throw std::runtime_error("unknown activation in checkpoint " + path);
         }
 
-        // Version 1 predates normalization and dropout, so those fields are absent and default.
+        // Version 1 predates normalization and dropout, and version 2 predates the skip, so the
+        // absent fields take their defaults.
         Normalization normalization = Normalization::none;
         double dropout_rate = 0.0;
+        bool residual = false;
         if (version >= 2) {
             const std::size_t encoded = read_size();
             if (encoded > static_cast<std::size_t>(Normalization::layer)) {
@@ -1419,8 +1437,11 @@ FeedForwardNetwork FeedForwardNetwork::load(const std::string& path) {
                 throw std::runtime_error("invalid dropout rate in checkpoint " + path);
             }
         }
+        if (version >= 3) {
+            residual = read_size() != 0;
+        }
         layers.push_back({input_size, output_size, static_cast<Activation>(activation),
-                          normalization, dropout_rate});
+                          normalization, dropout_rate, residual});
     }
 
     // The constructor re-validates the architecture, so a corrupted shape is rejected here.
