@@ -41,7 +41,7 @@ meaningful differences.
 | CNN: MNIST digit recognition | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Residual network: image classification | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Conditional GAN: MNIST digit generation | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
-| RNN: character-level sequence modeling | Planned | Planned | Planned | Planned | Planned | Planned |
+| RNN: character-level sequence modeling | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | LSTM and GRU: character-level sequence modeling | Planned | Planned | Planned | Planned | Planned | Planned |
 | Tiny Transformer: character-level language modeling | Planned | Planned | Planned | Planned | Planned | Planned |
 | Snake agent: Q-learning and DQN | Planned | Planned | Planned | Planned | Planned | Planned |
@@ -358,6 +358,27 @@ gradient and mostly hidden in the parameters. See the
 [GAN mathematics](docs/mathematics/gan.md) and the
 [reproducible experiment](experiments/14_cgan_mnist/README.md).
 
+### A character-level recurrent network
+
+The first sequence model. `CharRnn` is a tanh recurrent network with explicitly derived
+backpropagation through time, truncated to a window whose hidden state carries across windows,
+global-norm gradient clipping that reports the fraction of updates it touched and the largest norm
+it saw, seeded sampling at a temperature, and a `gradient_reach` measurement — the norm of one
+prediction's gradient with respect to the hidden state each step earlier. A `TextCorpus` fixes the
+vocabulary and contiguous splits that the LSTM, GRU, and Transformer milestones will share, and
+count-based n-gram models with additive smoothing set the floor any sequence model has to clear.
+
+On the first 500000 characters of Tiny Shakespeare the network reaches 1.96 nats per character on
+test, below the trigram's 2.15 with an eighth of its parameters. Three measurements are the
+substance. The gradient reaching twenty steps back is 0.6% of what reaches the last state — and
+training made that *worse*, from 27% untrained, because a trained network saturates its units. A
+5-step truncation window beats the 50-step one at equal epochs, because it makes ten times the
+updates, while the 50-step window wins at equal update counts; a 1-step window is worst of all. And
+clipping never fired under Adam yet decided everything under plain gradient descent, where the
+unclipped run's gradient norm hit 37 and its loss ended worse than a uniform guess while clipping at
+1 trained cleanly. See the [RNN mathematics](docs/mathematics/rnn.md) and the
+[reproducible experiment](experiments/15_char_rnn/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -395,11 +416,17 @@ differences, two networks sharing one checkpoint stream, the GAN's generator gra
 discriminator and the discriminator's own gradient checked against central differences under both
 generator losses, the minimax gradient vanishing against a confident discriminator, adversarial
 training recovering a two-class toy distribution without collapsing, GAN seed reproducibility and
-checkpoint round trips, and the project smoke test.
+checkpoint round trips, text corpus vocabulary, contiguous splits and prefix loading, n-gram
+probabilities and cross-entropies by hand, a hand-computed recurrent forward pass, backpropagation
+through time checked against central differences from the zero state and from a carried state,
+gradient reach decaying under a contractive recurrence, gradient clipping's scaling and reporting,
+a recurrent network learning a periodic sequence and generating its continuation, the truncation
+window blocking a dependency longer than itself on a delayed-copy stream, recurrent seed
+reproducibility and checkpoint round trips, and the project smoke test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, fourteen
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, fifteen
 experiment executables, and CTest executables without downloading a testing framework. The tests
 never need a downloaded dataset: the IDX reader is exercised against small files the test writes
 itself.
@@ -427,6 +454,9 @@ ctest --test-dir build --output-on-failure
 
 # Needs MNIST and CIFAR-10; see scripts/download_cifar10.sh
 ./build/cpp_resnet_cifar10
+
+# Needs Tiny Shakespeare; see scripts/download_tiny_shakespeare.sh
+./build/cpp_char_rnn
 ```
 
 ## Planned roadmap
