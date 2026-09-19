@@ -29,6 +29,8 @@ double apply_activation(const double value, const Activation activation) {
         return std::tanh(value);
     case Activation::rectified_linear:
         return std::max(value, 0.0);
+    case Activation::leaky_rectified_linear:
+        return value > 0.0 ? value : leaky_rectified_linear_slope * value;
     case Activation::identity:
         break;
     }
@@ -44,6 +46,8 @@ double activation_derivative(const double pre_activation, const double activatio
         return 1.0 - activation_value * activation_value;
     case Activation::rectified_linear:
         return pre_activation > 0.0 ? 1.0 : 0.0;
+    case Activation::leaky_rectified_linear:
+        return pre_activation > 0.0 ? 1.0 : leaky_rectified_linear_slope;
     case Activation::identity:
         break;
     }
@@ -171,7 +175,8 @@ ConvolutionalNetwork::ConvolutionalNetwork(const TensorShape input_shape,
             const auto fan_in = static_cast<double>(weights_per_filter);
             const auto fan_out =
                 static_cast<double>(layer.filters * layer.kernel_size * layer.kernel_size);
-            const double limit = layer.activation == Activation::rectified_linear
+            const double limit = layer.activation == Activation::rectified_linear ||
+                                         layer.activation == Activation::leaky_rectified_linear
                                      ? std::sqrt(6.0 / fan_in)
                                      : std::sqrt(6.0 / (fan_in + fan_out));
             parameters.weights.resize(layer.filters * weights_per_filter);
@@ -207,7 +212,8 @@ ConvolutionalNetwork::ConvolutionalNetwork(const TensorShape input_shape,
             }
             const auto fan_in = static_cast<double>(input.width);
             const auto fan_out = static_cast<double>(layer.units);
-            const double limit = layer.activation == Activation::rectified_linear
+            const double limit = layer.activation == Activation::rectified_linear ||
+                                         layer.activation == Activation::leaky_rectified_linear
                                      ? std::sqrt(6.0 / fan_in)
                                      : std::sqrt(6.0 / (fan_in + fan_out));
             parameters.weights.resize(layer.units * input.width);
@@ -827,7 +833,7 @@ ConvolutionalNetwork ConvolutionalNetwork::load(const std::string& path) {
         if (kind > static_cast<std::size_t>(ConvLayerKind::dense)) {
             throw std::runtime_error("unknown layer kind in checkpoint " + path);
         }
-        if (activation > static_cast<std::size_t>(Activation::rectified_linear)) {
+        if (activation > static_cast<std::size_t>(Activation::leaky_rectified_linear)) {
             throw std::runtime_error("unknown activation in checkpoint " + path);
         }
         layer.kind = static_cast<ConvLayerKind>(kind);

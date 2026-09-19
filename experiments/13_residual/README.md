@@ -54,7 +54,10 @@ helps at two blocks per stage, that advantage shrinks at five, and everything be
 Recorded on 2026-09-16 with Apple clang 17.0.0 on macOS 26.3.1 (arm64), CMake build type `Release`,
 seed `20260916`. A repeat run reproduced every accuracy, loss, and gradient norm exactly; wall-clock
 seconds are the one column that moved, since they depend on what else the machine is doing, and the
-figures below come from an otherwise-idle run.
+figures below come from an otherwise-idle run. The layer-normalized table was re-recorded on
+2026-09-18 after a fix to the training step, which until then never applied the optimizer's update
+to the normalization scale and shift; its gradient norms are measured before training and did not
+change, and no other table normalizes.
 
 ### Part one
 
@@ -80,10 +83,10 @@ figures below come from an otherwise-idle run.
 
 | Depth | Parameters | Initial \|grad\| | Train loss | Validation |
 |---:|---:|---:|---:|---:|
-| 2 | 59466 | 2.729e+00 | 0.0078 | 0.9430 |
-| 5 | 72330 | 2.442e+00 | 0.0391 | 0.9090 |
-| 10 | 93770 | 2.930e+00 | 0.0869 | 0.9120 |
-| 20 | 136650 | **4.880e+00** | 0.1990 | **0.9230** |
+| 2 | 59466 | 2.729e+00 | 0.0061 | 0.9460 |
+| 5 | 72330 | 2.442e+00 | 0.0230 | 0.9240 |
+| 10 | 93770 | 2.930e+00 | 0.0549 | 0.9400 |
+| 20 | 136650 | **4.880e+00** | 0.1691 | **0.9270** |
 
 The plain stack behaves as the degradation story describes: its first-layer gradient falls from
 `8.07e-01` to `2.86e-01` and its accuracy drops four points from depth 2 to depth 20, with its
@@ -100,7 +103,7 @@ Adding a normalization inside the block inverts the picture. The first-layer gra
 essentially **flat from 2 blocks to 20** — `2.73`, `2.44`, `2.93`, `4.88` — because standardizing the
 pre-activation discards whatever scale the accumulating identity path has built. It is the only one
 of the three whose accuracy does not degrade with depth, and at depth 20 it is the best of the three
-by 2.5 points over plain and 12.6 over the bare skip.
+by 2.9 points over plain and 13.0 over the bare skip.
 
 The practical reading: a residual block is a skip **and** a normalization, and the pairing is doing
 real work rather than being incidental. The original network puts batch normalization in every block

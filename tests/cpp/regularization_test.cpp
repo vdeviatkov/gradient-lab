@@ -321,6 +321,44 @@ void test_batch_normalization_running_statistics() {
     std::filesystem::remove(path);
 }
 
+// Training must move the normalization scale and shift, not only the weights and biases. One
+// step of plain gradient descent has to land exactly on parameters - lr * gradient for every
+// entry of the flat vector, including the scale and shift block each normalized layer appends.
+void test_training_updates_normalization_parameters() {
+    for (const auto normalization :
+         {ml_scratch::Normalization::layer, ml_scratch::Normalization::batch}) {
+        ml_scratch::FeedForwardNetwork network{
+            {{4, 6, ml_scratch::Activation::hyperbolic_tangent, normalization},
+             {6, 3, ml_scratch::Activation::identity}},
+            ml_scratch::Loss::softmax_cross_entropy,
+            17};
+        const auto before = network.parameters();
+        const auto gradient = normalization == ml_scratch::Normalization::layer
+                                  ? network.gradient(four_feature_data)
+                                  : network.batch_training_gradient(four_feature_data);
+
+        ml_scratch::NetworkTrainingConfig config;
+        config.learning_rate = 0.05;
+        config.max_epochs = 1;
+        static_cast<void>(network.fit(four_feature_data, config));
+        const auto after = network.parameters();
+
+        // The first layer's scale and shift sit after its 4 * 6 weights and 6 biases.
+        const std::size_t scale_offset = 4 * 6 + 6;
+        bool scale_moved = false;
+        for (std::size_t index = 0; index < before.size(); ++index) {
+            require_near(after[index], before[index] - config.learning_rate * gradient[index],
+                         1e-12, "a gradient step should touch every parameter, normalization "
+                                "scale and shift included");
+            if (index >= scale_offset && index < scale_offset + 12 &&
+                after[index] != before[index]) {
+                scale_moved = true;
+            }
+        }
+        require(scale_moved, "normalization parameters should have moved");
+    }
+}
+
 void test_dropout() {
     const std::vector<ml_scratch::DenseLayer> layers{
         {4, 50, ml_scratch::Activation::rectified_linear, ml_scratch::Normalization::none, 0.5},
@@ -457,6 +495,7 @@ int main() {
         test_normalization_gradients();
         test_layer_normalization_standardizes();
         test_batch_normalization_running_statistics();
+        test_training_updates_normalization_parameters();
         test_dropout();
         test_early_stopping();
         test_defaults_are_unchanged();

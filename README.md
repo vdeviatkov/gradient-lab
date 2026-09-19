@@ -40,7 +40,7 @@ meaningful differences.
 | Regularization, initialization, and normalization | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | CNN: MNIST digit recognition | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Residual network: image classification | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
-| Conditional GAN: MNIST digit generation | Planned | Planned | Planned | Planned | Planned | Planned |
+| Conditional GAN: MNIST digit generation | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | RNN: character-level sequence modeling | Planned | Planned | Planned | Planned | Planned | Planned |
 | LSTM and GRU: character-level sequence modeling | Planned | Planned | Planned | Planned | Planned | Planned |
 | Tiny Transformer: character-level language modeling | Planned | Planned | Planned | Planned | Planned | Planned |
@@ -331,6 +331,33 @@ inside the block does the picture invert: the gradient norm stays essentially fl
 is never just a skip. See the [residual mathematics](docs/mathematics/residual.md) and the
 [reproducible experiment](experiments/13_residual/README.md).
 
+### A conditional GAN on MNIST
+
+The first milestone without a loss that can be written down. `ConditionalGan` pairs two
+`FeedForwardNetwork`s: a generator from noise plus a one-hot label to an image, and a discriminator
+from an image plus the label to one logit. The discriminator trains with ordinary binary
+cross-entropy; the generator trains *through* the discriminator, which needed one extension of the
+backward pass — it now accepts an externally supplied output gradient, can skip the parameter
+gradient, and returns the gradient with respect to its input. Two backward passes joined end to end
+are the generator's step, and the composite gradient is verified by central differences with the
+discriminator held fixed. A leaky rectifier was added so no discriminator unit can stop passing
+gradient to the generator, and checkpoints can now be written to a stream so both networks share a
+file.
+
+Losses are not evidence in a GAN, so the experiment scores generated digits with a separately
+trained classifier and with distance-based diversity, coverage, and novelty measures, against a
+class-mean and an independent-pixel baseline. The trained generator's samples are judged as the
+requested digit 94.2% of the time, from exactly chance untrained, with within-class diversity at
+0.88 of the real images' and samples farther from their nearest training image than a genuinely new
+digit is. Three findings are worth the read: the two losses barely move while consistency climbs
+from 0.19 to 0.94, which is the reason a separate judge exists; the generator learns variety long
+before it learns the label, and then gives some of it back as it commits to a class; and the
+minimax loss's gradient is 4.3x smaller than the non-saturating loss's at every epoch yet the
+generator still learns, because Adam normalizes the size away — the saturation is real in the
+gradient and mostly hidden in the parameters. See the
+[GAN mathematics](docs/mathematics/gan.md) and the
+[reproducible experiment](experiments/14_cgan_mnist/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -362,11 +389,17 @@ convolution and pooling output shapes, hand-computed convolution and pooling val
 checks for every convolutional layer kind including stride and padding, translation equivariance
 from weight sharing, convolutional checkpoint round trips, a zeroed residual layer being exactly the identity, gradient
 checks through residual dense and convolutional blocks, the first-layer gradient a deep skip
-preserves, CIFAR-10 binary parsing including malformed records, and the project smoke test.
+preserves, CIFAR-10 binary parsing including malformed records, the leaky rectifier's values and
+gradient, input gradients and externally supplied output gradients checked against central
+differences, two networks sharing one checkpoint stream, the GAN's generator gradient through the
+discriminator and the discriminator's own gradient checked against central differences under both
+generator losses, the minimax gradient vanishing against a confident discriminator, adversarial
+training recovering a two-class toy distribution without collapsing, GAN seed reproducibility and
+checkpoint round trips, and the project smoke test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, thirteen
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, fourteen
 experiment executables, and CTest executables without downloading a testing framework. The tests
 never need a downloaded dataset: the IDX reader is exercised against small files the test writes
 itself.
@@ -390,6 +423,7 @@ ctest --test-dir build --output-on-failure
 ./build/cpp_optimizers
 ./build/cpp_regularization
 ./build/cpp_cnn_mnist
+./build/cpp_cgan_mnist
 
 # Needs MNIST and CIFAR-10; see scripts/download_cifar10.sh
 ./build/cpp_resnet_cifar10

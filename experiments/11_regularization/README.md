@@ -42,7 +42,11 @@ epoch before the budget.
 ## Measured result
 
 Recorded on 2026-09-14 with Apple clang 17.0.0 on macOS 26.3.1 (arm64), CMake build type `Release`,
-seed `20260914`. Each run took about 10 seconds.
+seed `20260914`. Each run took about 10 seconds. The normalization table was re-recorded on
+2026-09-18 after a fix to the training step: until then the optimizer's update was never applied to
+the normalization scale and shift, so those five runs had trained with the two frozen at one and
+zero. The gradient with respect to them was always computed and checked; it was the final
+subtraction that skipped them. Every other table is unaffected, since no other run normalizes.
 
 ### Weight initialization
 
@@ -92,18 +96,18 @@ data*; at 59 parameters per training image it is the wrong lever.
 | Scheme | Train loss | Train | Validation | Test | Gap |
 |---|---:|---:|---:|---:|---:|
 | none, lr 0.10 | 0.0195 | 0.9995 | 0.9145 | 0.8726 | 0.0850 |
-| batch norm, lr 0.10 | 0.0057 | 1.0000 | 0.9190 | 0.8832 | 0.0810 |
-| layer norm, lr 0.10 | 0.0067 | 1.0000 | 0.9210 | 0.8846 | 0.0790 |
+| batch norm, lr 0.10 | 0.0043 | 1.0000 | 0.9175 | 0.8790 | 0.0825 |
+| layer norm, lr 0.10 | 0.0050 | 1.0000 | 0.9205 | 0.8838 | 0.0795 |
 | none, lr 1.00 | 1.6778 | 0.3915 | 0.3730 | 0.3840 | 0.0185 |
-| batch norm, lr 1.00 | 0.0022 | 1.0000 | 0.9215 | **0.8936** | 0.0785 |
+| batch norm, lr 1.00 | 0.0030 | 0.9990 | 0.9205 | **0.8888** | 0.0785 |
 
-Both normalizations helped at the baseline rate — about a point of test accuracy each, and a third
-of the training loss — and layer normalization matched batch normalization despite needing no batch
-statistics and no running averages.
+Both normalizations helped at the baseline rate — 0.6 and 1.1 points of test accuracy, and a
+quarter of the training loss — and layer normalization edged batch normalization despite needing
+no batch statistics and no running averages.
 
 The clearest result in the whole experiment is the last pair. At a learning rate of 1.00 the plain
 network **fell apart**, reaching 0.3840 test accuracy, while the batch-normalized one reached
-**0.8936** — its best score anywhere in the experiment. Standardizing each layer's pre-activations
+**0.8888** — the best score anywhere in the experiment. Standardizing each layer's pre-activations
 removes the coupling between a layer's input scale and the largest stable step, which is precisely
 the claim normalization is supposed to support, and here it is worth ten times the usable learning
 rate.

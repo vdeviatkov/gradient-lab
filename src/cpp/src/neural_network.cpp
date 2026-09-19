@@ -34,6 +34,8 @@ double apply_activation(const double value, const Activation activation) {
         return std::tanh(value);
     case Activation::rectified_linear:
         return std::max(value, 0.0);
+    case Activation::leaky_rectified_linear:
+        return value > 0.0 ? value : leaky_rectified_linear_slope * value;
     case Activation::identity:
         break;
     }
@@ -52,6 +54,8 @@ double activation_derivative(const double pre_activation, const double activatio
     case Activation::rectified_linear:
         // The kink at zero has no derivative; the subgradient zero is the usual convention.
         return pre_activation > 0.0 ? 1.0 : 0.0;
+    case Activation::leaky_rectified_linear:
+        return pre_activation > 0.0 ? 1.0 : leaky_rectified_linear_slope;
     case Activation::identity:
         break;
     }
@@ -136,7 +140,10 @@ FeedForwardNetwork::FeedForwardNetwork(std::vector<DenseLayer> layers, const Los
         double limit = 0.0;
         switch (initialization.kind) {
         case Initialization::automatic:
-            limit = layer.activation == Activation::rectified_linear ? he : glorot;
+            limit = layer.activation == Activation::rectified_linear ||
+                            layer.activation == Activation::leaky_rectified_linear
+                        ? he
+                        : glorot;
             break;
         case Initialization::glorot_uniform:
             limit = glorot;
@@ -517,6 +524,14 @@ void FeedForwardNetwork::accumulate_gradient(const std::vector<double>& features
         workspace.delta[label] -= 1.0;
     }
 
+    backward_from_delta(scale, &flat, workspace, nullptr);
+}
+
+void FeedForwardNetwork::backward_from_delta(const double scale, std::vector<double>* flat,
+                                             Workspace& workspace,
+                                             std::vector<double>* input_gradient) const {
+    const ForwardCache& cache = workspace.cache;
+
     // delta holds dL/dy for the layer currently being visited, where y is what enters its
     // activation. Without normalization y is the affine output itself.
     for (std::size_t index = layers_.size(); index-- > 0;) {
@@ -533,9 +548,11 @@ void FeedForwardNetwork::accumulate_gradient(const std::vector<double>& features
             const std::size_t shift_offset = scale_offset + layer.output_size;
             workspace.normalized.resize(layer.output_size);
             for (std::size_t output = 0; output < layer.output_size; ++output) {
-                flat[scale_offset + output] +=
-                    scale * workspace.delta[output] * cache.normalized[index][output];
-                flat[shift_offset + output] += scale * workspace.delta[output];
+                if (flat != nullptr) {
+                    (*flat)[scale_offset + output] +=
+                        scale * workspace.delta[output] * cache.normalized[index][output];
+                    (*flat)[shift_offset + output] += scale * workspace.delta[output];
+                }
                 workspace.normalized[output] =
                     workspace.delta[output] * parameters_[index].scale[output];
             }
@@ -554,16 +571,33 @@ void FeedForwardNetwork::accumulate_gradient(const std::vector<double>& features
             }
         }
 
-        for (std::size_t output = 0; output < layer.output_size; ++output) {
-            const double unit_delta = workspace.delta[output];
-            const std::size_t row_offset = offset + output * layer.input_size;
-            for (std::size_t input = 0; input < layer.input_size; ++input) {
-                flat[row_offset + input] += scale * unit_delta * inputs[input];
+        if (flat != nullptr) {
+            for (std::size_t output = 0; output < layer.output_size; ++output) {
+                const double unit_delta = workspace.delta[output];
+                const std::size_t row_offset = offset + output * layer.input_size;
+                for (std::size_t input = 0; input < layer.input_size; ++input) {
+                    (*flat)[row_offset + input] += scale * unit_delta * inputs[input];
+                }
+                (*flat)[bias_offset + output] += scale * unit_delta;
             }
-            flat[bias_offset + output] += scale * unit_delta;
         }
 
         if (index == 0) {
+            // The input is not a layer: nothing produced it here, so the gradient reaching it is
+            // W^T delta (plus the skip) with no activation slope or dropout mask applied.
+            if (input_gradient != nullptr) {
+                input_gradient->assign(layer.input_size, 0.0);
+                for (std::size_t input = 0; input < layer.input_size; ++input) {
+                    double total = 0.0;
+                    for (std::size_t output = 0; output < layer.output_size; ++output) {
+                        total += parameters_[0].weights[output][input] * workspace.delta[output];
+                    }
+                    if (layer.residual) {
+                        total += workspace.delta[input];
+                    }
+                    (*input_gradient)[input] = total;
+                }
+            }
             break;
         }
         // Propagate to the previous layer: delta_prev = (W^T delta), then through that layer's
@@ -591,6 +625,64 @@ void FeedForwardNetwork::accumulate_gradient(const std::vector<double>& features
         }
         workspace.delta.swap(workspace.previous_delta);
     }
+}
+
+const std::vector<double>& FeedForwardNetwork::forward(const std::vector<double>& input,
+                                                       Workspace& workspace) const {
+    forward_into(input, workspace.cache);
+    return workspace.cache.activations.back();
+}
+
+namespace {
+
+void require_forward_pass(const FeedForwardNetwork::Workspace& workspace,
+                          const std::size_t layer_count) {
+    if (workspace.cache.activations.size() != layer_count + 1) {
+        throw std::logic_error("backpropagate needs a forward pass into the same workspace first");
+    }
+}
+
+} // namespace
+
+void FeedForwardNetwork::backpropagate(const std::vector<double>& output_gradient,
+                                       const double scale, std::vector<double>* flat,
+                                       Workspace& workspace,
+                                       std::vector<double>* input_gradient) const {
+    require_forward_pass(workspace, layers_.size());
+    if (output_gradient.size() != output_size()) {
+        throw std::invalid_argument("output gradient size does not match the network");
+    }
+    if (flat != nullptr && flat->size() != parameter_count_) {
+        throw std::invalid_argument("gradient buffer size does not match the parameter count");
+    }
+    // The supplied gradient is with respect to the final activations; the chain rule through the
+    // final activation function turns it into dL/dy, which is what the layer loop walks from.
+    const Activation activation = layers_.back().activation;
+    const ForwardCache& cache = workspace.cache;
+    workspace.delta.resize(output_size());
+    for (std::size_t index = 0; index < output_size(); ++index) {
+        workspace.delta[index] =
+            output_gradient[index] *
+            activation_derivative(cache.activation_inputs.back()[index],
+                                  cache.activation_values.back()[index], activation);
+    }
+    backward_from_delta(scale, flat, workspace, input_gradient);
+}
+
+void FeedForwardNetwork::backpropagate_loss(const std::vector<double>& targets, const double scale,
+                                            std::vector<double>* flat, Workspace& workspace,
+                                            std::vector<double>* input_gradient) const {
+    require_forward_pass(workspace, layers_.size());
+    if (targets.size() != output_size()) {
+        throw std::invalid_argument("target count does not match the network output size");
+    }
+    if (flat != nullptr && flat->size() != parameter_count_) {
+        throw std::invalid_argument("gradient buffer size does not match the parameter count");
+    }
+    const ForwardCache& cache = workspace.cache;
+    workspace.delta =
+        output_delta(cache.activation_inputs.back(), cache.activations.back(), targets);
+    backward_from_delta(scale, flat, workspace, input_gradient);
 }
 
 // Batch normalization makes the loss of one sample depend on every other sample in its batch, so
@@ -879,6 +971,14 @@ void FeedForwardNetwork::subtract_update(const std::vector<double>& update) {
         }
         for (std::size_t output = 0; output < layer.output_size; ++output) {
             parameters_[index].biases[output] -= update[cursor++];
+        }
+        // A normalized layer's scale and shift follow its biases, exactly as parameters() lays
+        // them out; both vectors are empty otherwise.
+        for (double& scale : parameters_[index].scale) {
+            scale -= update[cursor++];
+        }
+        for (double& shift : parameters_[index].shift) {
+            shift -= update[cursor++];
         }
     }
 }
@@ -1345,7 +1445,10 @@ void FeedForwardNetwork::save(const std::string& path) const {
     if (!stream) {
         throw std::runtime_error("cannot open checkpoint for writing: " + path);
     }
+    save(stream, path);
+}
 
+void FeedForwardNetwork::save(std::ostream& stream, const std::string& path) const {
     stream << "ml_scratch_feedforward 3\n"
            << "loss " << static_cast<int>(loss_) << '\n'
            << "layers " << layers_.size() << '\n'
@@ -1380,7 +1483,10 @@ FeedForwardNetwork FeedForwardNetwork::load(const std::string& path) {
     if (!stream) {
         throw std::runtime_error("cannot open checkpoint: " + path);
     }
+    return load(stream, path);
+}
 
+FeedForwardNetwork FeedForwardNetwork::load(std::istream& stream, const std::string& path) {
     const auto expect = [&stream, &path](const std::string& keyword) {
         std::string token;
         if (!(stream >> token) || token != keyword) {
@@ -1417,7 +1523,7 @@ FeedForwardNetwork FeedForwardNetwork::load(const std::string& path) {
         const std::size_t input_size = read_size();
         const std::size_t output_size = read_size();
         const std::size_t activation = read_size();
-        if (activation > static_cast<std::size_t>(Activation::rectified_linear)) {
+        if (activation > static_cast<std::size_t>(Activation::leaky_rectified_linear)) {
             throw std::runtime_error("unknown activation in checkpoint " + path);
         }
 

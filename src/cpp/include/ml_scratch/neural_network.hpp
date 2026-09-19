@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <iosfwd>
 #include <random>
 #include <string>
 #include <vector>
@@ -18,7 +19,14 @@ enum class Activation {
     // Not differentiable at zero. Gradient checking can report a spurious mismatch for a
     // pre-activation that lands on the kink; see docs/mathematics/backpropagation.md.
     rectified_linear,
+    // max(v, slope * v): a rectifier whose negative side keeps a small fixed slope, so no unit can
+    // stop passing gradient by landing in the flat region. A GAN's discriminator uses it because
+    // the generator learns only through the gradient the discriminator passes back.
+    leaky_rectified_linear,
 };
+
+// The negative-side slope of leaky_rectified_linear, the value the DCGAN paper uses.
+inline constexpr double leaky_rectified_linear_slope = 0.2;
 
 enum class Loss {
     // Mean over outputs and samples of (prediction - target)^2.
@@ -218,6 +226,10 @@ class FeedForwardNetwork {
 
     [[nodiscard]] std::vector<double> parameters() const;
     void set_parameters(const std::vector<double>& values);
+    // Subtracts an already-scaled update from the parameters, walking the same flat layout. What
+    // an Optimizer's compute_update produces goes straight in here, without a round trip through
+    // parameters() and set_parameters().
+    void subtract_update(const std::vector<double>& update);
     // Batch normalization's running mean and variance. They are state rather than parameters: no
     // gradient touches them, but inference depends on them, so checkpoints carry them.
     [[nodiscard]] std::vector<double> running_statistics() const;
@@ -233,19 +245,6 @@ class FeedForwardNetwork {
     [[nodiscard]] std::size_t input_size() const noexcept { return layers_.front().input_size; }
     [[nodiscard]] std::size_t output_size() const noexcept { return layers_.back().output_size; }
 
-  private:
-    struct LayerParameters {
-        // weights[output][input]
-        FeatureMatrix weights;
-        std::vector<double> biases;
-        // Normalization scale and shift, empty when the layer is not normalized.
-        std::vector<double> scale;
-        std::vector<double> shift;
-        // Batch normalization's inference statistics, empty otherwise.
-        std::vector<double> running_mean;
-        std::vector<double> running_variance;
-    };
-
     // The chain through one layer is s = Wa + b, n = standardize(s), y = scale*n + shift,
     // a' = g(y), out = a' * dropout_factor. Every intermediate is kept because the backward pass
     // needs it; without normalization or dropout, y = s and out = a'.
@@ -260,12 +259,58 @@ class FeedForwardNetwork {
         std::vector<double> inverse_deviation;              // 1/sqrt(var + eps), layer norm only
     };
 
-    // Reusable scratch space, so a training epoch does not allocate once per sample.
+    // Reusable scratch space, so a training epoch does not allocate once per sample. A caller
+    // driving the passes below keeps one per network and reuses it across samples.
     struct Workspace {
         ForwardCache cache;
         std::vector<double> delta;
         std::vector<double> previous_delta;
         std::vector<double> normalized;
+    };
+
+    // The sample-at-a-time passes, exposed so that a network can be one stage of a larger
+    // computation: a generator is trained through a discriminator by running the discriminator's
+    // backward pass to its input and feeding that gradient into the generator's. Both backward
+    // passes consume the intermediates the most recent `forward` into the same workspace left
+    // behind, so a forward must precede each of them. Batch normalization is applied in inference
+    // mode and dropout never fires here.
+    //
+    // Runs the forward pass and returns the raw final-layer output, which stays valid until the
+    // workspace is used again.
+    const std::vector<double>& forward(const std::vector<double>& input,
+                                       Workspace& workspace) const;
+    // Backpropagates an externally supplied dL/d(output) — the gradient of some loss this network
+    // knows nothing about, taken with respect to its final activations. Adds scale * dL/dtheta to
+    // `flat` when it is non-null, and writes dL/d(input) to `input_gradient` when that is.
+    void backpropagate(const std::vector<double>& output_gradient, double scale,
+                       std::vector<double>* flat, Workspace& workspace,
+                       std::vector<double>* input_gradient = nullptr) const;
+    // The same, for the network's own loss against `targets`: the output delta is the one the
+    // loss and its output transform define together, exactly as `gradient` computes it.
+    void backpropagate_loss(const std::vector<double>& targets, double scale,
+                            std::vector<double>* flat, Workspace& workspace,
+                            std::vector<double>* input_gradient = nullptr) const;
+    // Loss of one raw output against its targets under this network's loss function.
+    [[nodiscard]] double sample_loss(const std::vector<double>& outputs,
+                                     const std::vector<double>& targets) const;
+
+    // The checkpoint format written to and read from an arbitrary stream, so that a model made of
+    // several networks can keep them in one file. `description` names the stream in error messages.
+    void save(std::ostream& stream, const std::string& description = "stream") const;
+    [[nodiscard]] static FeedForwardNetwork load(std::istream& stream,
+                                                 const std::string& description = "stream");
+
+  private:
+    struct LayerParameters {
+        // weights[output][input]
+        FeatureMatrix weights;
+        std::vector<double> biases;
+        // Normalization scale and shift, empty when the layer is not normalized.
+        std::vector<double> scale;
+        std::vector<double> shift;
+        // Batch normalization's inference statistics, empty otherwise.
+        std::vector<double> running_mean;
+        std::vector<double> running_variance;
     };
 
     // Batch normalization couples the samples of a mini-batch, so its forward and backward passes
@@ -292,8 +337,6 @@ class FeedForwardNetwork {
                              const std::vector<double>* targets, std::size_t label, double scale,
                              std::vector<double>& flat, Workspace& workspace, bool training = false,
                              std::mt19937* dropout_engine = nullptr) const;
-    // Subtracts an already-scaled update from the parameters, walking the same flat layout.
-    void subtract_update(const std::vector<double>& update);
     void require_classification() const;
     void add_penalty_gradient(const RegularizationConfig& regularization,
                               std::vector<double>& flat) const;
@@ -308,8 +351,12 @@ class FeedForwardNetwork {
                                      bool update_running = true);
     [[nodiscard]] std::size_t normalization_offset(std::size_t layer) const;
     [[nodiscard]] std::size_t validate_labeled(const LabeledDataset& dataset) const;
-    [[nodiscard]] double sample_loss(const std::vector<double>& outputs,
-                                     const std::vector<double>& targets) const;
+    // The backward pass shared by every sample-at-a-time gradient: walks the cached forward pass
+    // in `workspace` from the output delta already in `workspace.delta` down to the first layer.
+    // `flat` may be null to skip the parameter gradient, and `input_gradient` may be null to stop
+    // at the first layer.
+    void backward_from_delta(double scale, std::vector<double>* flat, Workspace& workspace,
+                             std::vector<double>* input_gradient) const;
     // dL/dz for the final layer, which the loss and its output transform determine together.
     [[nodiscard]] std::vector<double> output_delta(const std::vector<double>& pre_activations,
                                                    const std::vector<double>& outputs,

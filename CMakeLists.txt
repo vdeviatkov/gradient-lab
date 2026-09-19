@@ -14,6 +14,7 @@ add_library(
     src/cpp/src/dataset.cpp
     src/cpp/src/decision_tree.cpp
     src/cpp/src/deterministic_random.cpp
+    src/cpp/src/gan.cpp
     src/cpp/src/kmeans.cpp
     src/cpp/src/linear_regression.cpp
     src/cpp/src/logistic_regression.cpp
@@ -96,6 +97,10 @@ add_executable(cpp_resnet_cifar10 experiments/13_residual/cpp_main.cpp)
 target_link_libraries(cpp_resnet_cifar10 PRIVATE ml_scratch_cpp)
 enable_project_warnings(cpp_resnet_cifar10)
 
+add_executable(cpp_cgan_mnist experiments/14_cgan_mnist/cpp_main.cpp)
+target_link_libraries(cpp_cgan_mnist PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_cgan_mnist)
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
@@ -162,4 +167,9 @@ if(BUILD_TESTING)
     target_link_libraries(cpp_softmax_regression_test PRIVATE ml_scratch_cpp)
     enable_project_warnings(cpp_softmax_regression_test)
     add_test(NAME cpp_softmax_regression_test COMMAND cpp_softmax_regression_test)
+
+    add_executable(cpp_gan_test tests/cpp/gan_test.cpp)
+    target_link_libraries(cpp_gan_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_gan_test)
+    add_test(NAME cpp_gan_test COMMAND cpp_gan_test)
 endif()
