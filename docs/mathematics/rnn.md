@@ -61,8 +61,8 @@ the window's initial state is treated as a constant.
 
 The consequence is precise. A dependency that spans more than $T$ steps produces no gradient, so
 nothing in the parameters is pushed to capture it. The test makes this concrete with a stream in
-which every other character is a copy of the random character written five steps earlier: with a
-window of 4 the network learns nothing beyond chance, and with a window of 16 it reaches the
+which every other character is a copy of a random character that entered six steps earlier: with
+a window of 4 the network learns nothing beyond chance, and with a window of 16 it reaches the
 best achievable loss. The experiment repeats the comparison on real text.
 
 One subtlety the test also records: truncation does not stop the *state* from carrying

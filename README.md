@@ -42,7 +42,7 @@ meaningful differences.
 | Residual network: image classification | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Conditional GAN: MNIST digit generation | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | RNN: character-level sequence modeling | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
-| LSTM and GRU: character-level sequence modeling | Planned | Planned | Planned | Planned | Planned | Planned |
+| LSTM and GRU: character-level sequence modeling | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Tiny Transformer: character-level language modeling | Planned | Planned | Planned | Planned | Planned | Planned |
 | Snake agent: Q-learning and DQN | Planned | Planned | Planned | Planned | Planned | Planned |
 | Implementation benchmarks | Planned | Planned | Planned | Planned | Planned | Planned |
@@ -379,6 +379,26 @@ unclipped run's gradient norm hit 37 and its loss ended worse than a uniform gue
 1 trained cleanly. See the [RNN mathematics](docs/mathematics/rnn.md) and the
 [reproducible experiment](experiments/15_char_rnn/README.md).
 
+### LSTM and GRU cells
+
+`CharRnn` gained a `RecurrentCell`: the elman cell, an LSTM with its additively updated cell
+state and a forget bias of one, and a GRU. The output layer, loss, truncation, carried state,
+clipping, sampling, checkpoints, and outer BPTT loop are shared; only the step forward and its
+backward differ, and both gated backward passes are checked against central differences. The
+elman path is unchanged and experiment 15's output is byte-identical.
+
+Three comparisons on the same corpus give three different winners, and the README explains why
+that is not a contradiction. At equal parameters the GRU beats the elman cell on test (1.919
+against 1.964) and the LSTM loses to it (2.051), because 58 units is the price of four gates and
+Shakespeare's dependencies are mostly short. At equal width both gated cells win, at 2.5–3.4 times
+the cost. On a delayed-copy stream that genuinely needs memory, the elman cell learns a six-step
+copy and not a twelve-step one; both gated cells learn twelve, and only the LSTM learns twenty.
+Gradient reach, measured on each trained network, is the mechanism and is *learned*, not
+architectural: on text the trained LSTM carries less gradient twenty steps back than the elman
+cell, while on the copy stream the same cell carries 146% of it to the source bit — the gradient
+grows along the cell path. See the [LSTM and GRU mathematics](docs/mathematics/lstm_gru.md) and
+the [reproducible experiment](experiments/16_lstm_gru/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -421,12 +441,14 @@ probabilities and cross-entropies by hand, a hand-computed recurrent forward pas
 through time checked against central differences from the zero state and from a carried state,
 gradient reach decaying under a contractive recurrence, gradient clipping's scaling and reporting,
 a recurrent network learning a periodic sequence and generating its continuation, the truncation
-window blocking a dependency longer than itself on a delayed-copy stream, recurrent seed
-reproducibility and checkpoint round trips, and the project smoke test.
+window blocking a dependency longer than itself on a delayed-copy stream, hand-computed LSTM and
+GRU steps, both gated cells' backpropagation through time checked against central differences
+from the zero state and from a carried state with the carried (h, c) pair verified as a complete
+state, recurrent seed reproducibility and checkpoint round trips, and the project smoke test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, fifteen
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, sixteen
 experiment executables, and CTest executables without downloading a testing framework. The tests
 never need a downloaded dataset: the IDX reader is exercised against small files the test writes
 itself.
@@ -457,6 +479,7 @@ ctest --test-dir build --output-on-failure
 
 # Needs Tiny Shakespeare; see scripts/download_tiny_shakespeare.sh
 ./build/cpp_char_rnn
+./build/cpp_lstm_gru
 ```
 
 ## Planned roadmap

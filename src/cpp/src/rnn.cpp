@@ -29,9 +29,45 @@ double clip_gradient(std::vector<double>& gradient, const double max_norm) {
     return norm;
 }
 
+const char* recurrent_cell_name(const RecurrentCell cell) {
+    switch (cell) {
+    case RecurrentCell::elman:
+        return "elman";
+    case RecurrentCell::lstm:
+        return "lstm";
+    case RecurrentCell::gru:
+        return "gru";
+    }
+    return "";
+}
+
+namespace {
+
+double sigmoid(const double value) {
+    if (value >= 0.0) {
+        return 1.0 / (1.0 + std::exp(-value));
+    }
+    const double exponential = std::exp(value);
+    return exponential / (1.0 + exponential);
+}
+
+} // namespace
+
+std::size_t CharRnn::gate_rows() const noexcept {
+    switch (cell_) {
+    case RecurrentCell::elman:
+        return hidden_size_;
+    case RecurrentCell::lstm:
+        return 4 * hidden_size_;
+    case RecurrentCell::gru:
+        return 3 * hidden_size_;
+    }
+    return hidden_size_;
+}
+
 CharRnn::CharRnn(const std::size_t vocabulary_size, const std::size_t hidden_size,
-                 const std::uint32_t seed)
-    : vocabulary_size_(vocabulary_size), hidden_size_(hidden_size) {
+                 const std::uint32_t seed, const RecurrentCell cell)
+    : vocabulary_size_(vocabulary_size), hidden_size_(hidden_size), cell_(cell) {
     if (vocabulary_size < 2) {
         throw std::invalid_argument("the vocabulary needs at least two characters");
     }
@@ -57,9 +93,18 @@ CharRnn::CharRnn(const std::size_t vocabulary_size, const std::size_t hidden_siz
             parameters_[offset + index] = uniform(limit);
         }
     };
-    fill(input_offset(), hidden_size_ * vocabulary_size_, vocabulary_size_, hidden_size_);
-    fill(recurrent_offset(), hidden_size_ * hidden_size_, hidden_size_, hidden_size_);
+    // Each gate's block is scaled as its own hidden_size x fan_in matrix, so a gated cell's
+    // blocks start at the same scale as the elman cell's single matrix.
+    fill(input_offset(), gate_rows() * vocabulary_size_, vocabulary_size_, hidden_size_);
+    fill(recurrent_offset(), gate_rows() * hidden_size_, hidden_size_, hidden_size_);
     fill(output_offset(), vocabulary_size_ * hidden_size_, hidden_size_, vocabulary_size_);
+    if (cell_ == RecurrentCell::lstm) {
+        // A forget gate near one at the start lets the cell state persist before anything has
+        // been learned about when to clear it; at zero the state would halve every step.
+        for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
+            parameters_[hidden_bias_offset() + hidden_size_ + unit] = 1.0;
+        }
+    }
 }
 
 void CharRnn::validate_ids(const TokenSequence& ids) const {
@@ -74,8 +119,8 @@ void CharRnn::validate_ids(const TokenSequence& ids) const {
 }
 
 void CharRnn::validate_state(const State& state) const {
-    if (state.size() != hidden_size_) {
-        throw std::invalid_argument("state size does not match the hidden size");
+    if (state.size() != state_size()) {
+        throw std::invalid_argument("state size does not match the cell's state size");
     }
     for (const double value : state) {
         if (!std::isfinite(value)) {
@@ -98,15 +143,91 @@ void CharRnn::softmax_into(const std::vector<double>& logits, const double tempe
     }
 }
 
-double CharRnn::forward(const TokenSequence& ids, const std::size_t offset,
-                        const std::size_t steps, State& state, Workspace& workspace) const {
+void CharRnn::step_forward(const std::size_t input, const double* previous_hidden,
+                           const double* previous_cell, const std::size_t step,
+                           Workspace& workspace) const {
     const double* input_weights = parameters_.data() + input_offset();
     const double* recurrent_weights = parameters_.data() + recurrent_offset();
-    const double* hidden_bias = parameters_.data() + hidden_bias_offset();
+    const double* bias = parameters_.data() + hidden_bias_offset();
+    double* hidden = workspace.hidden.data() + step * hidden_size_;
+
+    // Every gate row's pre-activation is bias + one column of W_x (the one-hot input selects
+    // it, so the input term is a column read) + a row of W_h times the previous hidden vector.
+    const auto pre_activation = [&](const std::size_t row) {
+        double total = bias[row] + input_weights[row * vocabulary_size_ + input];
+        const double* weights = recurrent_weights + row * hidden_size_;
+        for (std::size_t source = 0; source < hidden_size_; ++source) {
+            total += weights[source] * previous_hidden[source];
+        }
+        return total;
+    };
+
+    switch (cell_) {
+    case RecurrentCell::elman:
+        for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
+            hidden[unit] = std::tanh(pre_activation(unit));
+        }
+        return;
+    case RecurrentCell::lstm: {
+        double* gates = workspace.gates.data() + step * 4 * hidden_size_;
+        double* cell = workspace.cell.data() + step * hidden_size_;
+        double* cell_tanh = workspace.extra.data() + step * hidden_size_;
+        for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
+            const double input_gate = sigmoid(pre_activation(unit));
+            const double forget_gate = sigmoid(pre_activation(hidden_size_ + unit));
+            const double output_gate = sigmoid(pre_activation(2 * hidden_size_ + unit));
+            const double candidate = std::tanh(pre_activation(3 * hidden_size_ + unit));
+            gates[unit] = input_gate;
+            gates[hidden_size_ + unit] = forget_gate;
+            gates[2 * hidden_size_ + unit] = output_gate;
+            gates[3 * hidden_size_ + unit] = candidate;
+            // The additive update: the old cell scaled by the forget gate plus the gated
+            // candidate. Nothing here squashes c_t, which is what lets it persist.
+            cell[unit] = forget_gate * previous_cell[unit] + input_gate * candidate;
+            cell_tanh[unit] = std::tanh(cell[unit]);
+            hidden[unit] = output_gate * cell_tanh[unit];
+        }
+        return;
+    }
+    case RecurrentCell::gru: {
+        double* gates = workspace.gates.data() + step * 3 * hidden_size_;
+        double* recurrent_candidate = workspace.extra.data() + step * hidden_size_;
+        for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
+            gates[unit] = sigmoid(pre_activation(unit));                   // reset
+            gates[hidden_size_ + unit] = sigmoid(pre_activation(hidden_size_ + unit)); // update
+        }
+        for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
+            // The candidate's recurrent term is gated by reset before the tanh, so the
+            // recurrent product W_hn h_{t-1} is kept on its own for the backward pass.
+            const std::size_t row = 2 * hidden_size_ + unit;
+            const double* weights = recurrent_weights + row * hidden_size_;
+            double recurrent = 0.0;
+            for (std::size_t source = 0; source < hidden_size_; ++source) {
+                recurrent += weights[source] * previous_hidden[source];
+            }
+            recurrent_candidate[unit] = recurrent;
+            const double candidate =
+                std::tanh(bias[row] + input_weights[row * vocabulary_size_ + input] +
+                          gates[unit] * recurrent);
+            gates[row] = candidate;
+            const double update = gates[hidden_size_ + unit];
+            hidden[unit] = (1.0 - update) * candidate + update * previous_hidden[unit];
+        }
+        return;
+    }
+    }
+}
+
+double CharRnn::forward(const TokenSequence& ids, const std::size_t offset,
+                        const std::size_t steps, State& state, Workspace& workspace) const {
     const double* output_weights = parameters_.data() + output_offset();
     const double* output_bias = parameters_.data() + output_bias_offset();
+    const bool has_cell = cell_ == RecurrentCell::lstm;
 
     workspace.hidden.resize(steps * hidden_size_);
+    workspace.cell.resize(has_cell ? steps * hidden_size_ : 0);
+    workspace.gates.resize(cell_ == RecurrentCell::elman ? 0 : steps * gate_rows());
+    workspace.extra.resize(cell_ == RecurrentCell::elman ? 0 : steps * hidden_size_);
     workspace.probabilities.resize(steps * vocabulary_size_);
     workspace.logits.resize(vocabulary_size_);
     std::vector<double>& logits = workspace.logits;
@@ -117,16 +238,12 @@ double CharRnn::forward(const TokenSequence& ids, const std::size_t offset,
         const std::size_t target = ids[offset + step + 1];
         double* hidden = workspace.hidden.data() + step * hidden_size_;
         const double* previous = step == 0 ? state.data() : hidden - hidden_size_;
+        const double* previous_cell =
+            !has_cell ? nullptr
+            : step == 0 ? state.data() + hidden_size_
+                        : workspace.cell.data() + (step - 1) * hidden_size_;
+        step_forward(input, previous, previous_cell, step, workspace);
 
-        // The one-hot input selects one column of W_xh, so the input term is a column read.
-        for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
-            double activation = hidden_bias[unit] + input_weights[unit * vocabulary_size_ + input];
-            const double* row = recurrent_weights + unit * hidden_size_;
-            for (std::size_t source = 0; source < hidden_size_; ++source) {
-                activation += row[source] * previous[source];
-            }
-            hidden[unit] = std::tanh(activation);
-        }
         for (std::size_t id = 0; id < vocabulary_size_; ++id) {
             double logit = output_bias[id];
             const double* row = output_weights + id * hidden_size_;
@@ -150,29 +267,157 @@ double CharRnn::forward(const TokenSequence& ids, const std::size_t offset,
     }
     state.assign(workspace.hidden.end() - static_cast<std::ptrdiff_t>(hidden_size_),
                  workspace.hidden.end());
+    if (has_cell) {
+        state.insert(state.end(), workspace.cell.end() - static_cast<std::ptrdiff_t>(hidden_size_),
+                     workspace.cell.end());
+    }
     return total;
+}
+
+void CharRnn::step_backward(const std::size_t input, const double* previous_hidden,
+                            const double* previous_cell, const std::size_t step,
+                            std::vector<double>& flat, Workspace& workspace) const {
+    const double* recurrent_weights = parameters_.data() + recurrent_offset();
+    double* input_gradient = flat.data() + input_offset();
+    double* recurrent_gradient = flat.data() + recurrent_offset();
+    double* bias_gradient = flat.data() + hidden_bias_offset();
+    const double* hidden = workspace.hidden.data() + step * hidden_size_;
+    std::vector<double>& hidden_delta = workspace.hidden_delta;
+    std::vector<double>& cell_delta = workspace.cell_delta;
+    std::vector<double>& step_delta = workspace.step_delta;
+
+    // Once every gate row's dL/d(pre-activation) is in step_delta, the parameter gradients and
+    // the carry to h_{t-1} are the same for every cell: the rows are affine in x_t and h_{t-1}.
+    // `rows` limits which gate rows carry back through W_h; the GRU's candidate row does not,
+    // since its recurrent term is handled separately.
+    const auto accumulate_rows = [&](const std::size_t rows) {
+        for (std::size_t row = 0; row < rows; ++row) {
+            const double delta = step_delta[row];
+            input_gradient[row * vocabulary_size_ + input] += delta;
+            bias_gradient[row] += delta;
+            double* gradient_row = recurrent_gradient + row * hidden_size_;
+            for (std::size_t source = 0; source < hidden_size_; ++source) {
+                gradient_row[source] += delta * previous_hidden[source];
+            }
+        }
+    };
+    const auto carry_rows = [&](const std::size_t rows) {
+        for (std::size_t row = 0; row < rows; ++row) {
+            const double delta = step_delta[row];
+            const double* weights = recurrent_weights + row * hidden_size_;
+            for (std::size_t source = 0; source < hidden_size_; ++source) {
+                hidden_delta[source] += delta * weights[source];
+            }
+        }
+    };
+
+    switch (cell_) {
+    case RecurrentCell::elman:
+        // Through the tanh: dL/da_t = dL/dh_t * (1 - h_t^2).
+        for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
+            step_delta[unit] = hidden_delta[unit] * (1.0 - hidden[unit] * hidden[unit]);
+        }
+        accumulate_rows(hidden_size_);
+        // Carry to the previous step: dL/dh_{t-1} = W_hh^T dL/da_t.
+        std::fill(hidden_delta.begin(), hidden_delta.end(), 0.0);
+        carry_rows(hidden_size_);
+        return;
+    case RecurrentCell::lstm: {
+        const double* gates = workspace.gates.data() + step * 4 * hidden_size_;
+        const double* cell_tanh = workspace.extra.data() + step * hidden_size_;
+        for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
+            const double input_gate = gates[unit];
+            const double forget_gate = gates[hidden_size_ + unit];
+            const double output_gate = gates[2 * hidden_size_ + unit];
+            const double candidate = gates[3 * hidden_size_ + unit];
+            // h_t = o * tanh(c_t): the output gate's gradient, and dL/dc_t gains the path
+            // through h_t on top of what the next step carried back.
+            const double output_delta = hidden_delta[unit] * cell_tanh[unit];
+            const double total_cell_delta =
+                cell_delta[unit] +
+                hidden_delta[unit] * output_gate * (1.0 - cell_tanh[unit] * cell_tanh[unit]);
+            // c_t = f * c_{t-1} + i * g.
+            const double input_delta = total_cell_delta * candidate;
+            const double candidate_delta = total_cell_delta * input_gate;
+            const double forget_delta = total_cell_delta * previous_cell[unit];
+            // The carry to c_{t-1} is a plain product with the forget gate: no weight matrix
+            // and no squashing derivative, which is why the gradient survives many steps.
+            cell_delta[unit] = total_cell_delta * forget_gate;
+            step_delta[unit] = input_delta * input_gate * (1.0 - input_gate);
+            step_delta[hidden_size_ + unit] = forget_delta * forget_gate * (1.0 - forget_gate);
+            step_delta[2 * hidden_size_ + unit] = output_delta * output_gate * (1.0 - output_gate);
+            step_delta[3 * hidden_size_ + unit] = candidate_delta * (1.0 - candidate * candidate);
+        }
+        accumulate_rows(4 * hidden_size_);
+        std::fill(hidden_delta.begin(), hidden_delta.end(), 0.0);
+        carry_rows(4 * hidden_size_);
+        return;
+    }
+    case RecurrentCell::gru: {
+        const double* gates = workspace.gates.data() + step * 3 * hidden_size_;
+        const double* recurrent_candidate = workspace.extra.data() + step * hidden_size_;
+        // dL/dh_{t-1} has three sources: the direct z * h_{t-1} term, the gates' W_h rows, and
+        // the candidate's reset-gated recurrent term. The first goes into a fresh buffer while
+        // hidden_delta (dL/dh_t) is still being read.
+        std::vector<double>& previous_delta = workspace.cell_delta;
+        previous_delta.assign(hidden_size_, 0.0);
+        for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
+            const double reset = gates[unit];
+            const double update = gates[hidden_size_ + unit];
+            const double candidate = gates[2 * hidden_size_ + unit];
+            const double delta = hidden_delta[unit];
+            // h_t = (1 - z) * n + z * h_{t-1}.
+            const double candidate_delta = delta * (1.0 - update);
+            const double update_delta = delta * (previous_hidden[unit] - candidate);
+            previous_delta[unit] = delta * update;
+            const double candidate_pre_delta = candidate_delta * (1.0 - candidate * candidate);
+            // n = tanh(... + r * q) with q = W_hn h_{t-1}: the reset gate sees q, and q's own
+            // gradient is r * dL/da_n, carried to h_{t-1} through W_hn below.
+            const double reset_delta = candidate_pre_delta * recurrent_candidate[unit];
+            step_delta[unit] = reset_delta * reset * (1.0 - reset);
+            step_delta[hidden_size_ + unit] = update_delta * update * (1.0 - update);
+            step_delta[2 * hidden_size_ + unit] = candidate_pre_delta;
+        }
+        // The candidate row's input weights and bias take dL/da_n as they are; its recurrent
+        // weights and its carry take r * dL/da_n, since W_hn h_{t-1} enters through the reset.
+        for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
+            const std::size_t row = 2 * hidden_size_ + unit;
+            const double delta = step_delta[row];
+            input_gradient[row * vocabulary_size_ + input] += delta;
+            bias_gradient[row] += delta;
+            const double gated = delta * gates[unit];
+            double* gradient_row = recurrent_gradient + row * hidden_size_;
+            const double* weights = recurrent_weights + row * hidden_size_;
+            for (std::size_t source = 0; source < hidden_size_; ++source) {
+                gradient_row[source] += gated * previous_hidden[source];
+                previous_delta[source] += gated * weights[source];
+            }
+        }
+        accumulate_rows(2 * hidden_size_);
+        hidden_delta.swap(previous_delta);
+        carry_rows(2 * hidden_size_);
+        return;
+    }
+    }
 }
 
 void CharRnn::backward(const TokenSequence& ids, const std::size_t offset,
                        const std::size_t steps, const State& initial, const double scale,
                        const bool last_only, std::vector<double>& flat, Workspace& workspace,
                        std::vector<double>* reach) const {
-    const double* recurrent_weights = parameters_.data() + recurrent_offset();
     const double* output_weights = parameters_.data() + output_offset();
-    double* input_gradient = flat.data() + input_offset();
-    double* recurrent_gradient = flat.data() + recurrent_offset();
-    double* hidden_bias_gradient = flat.data() + hidden_bias_offset();
     double* output_gradient = flat.data() + output_offset();
     double* output_bias_gradient = flat.data() + output_bias_offset();
+    const bool has_cell = cell_ == RecurrentCell::lstm;
 
     // hidden_delta accumulates dL/dh_t: the part arriving through this step's logits plus the
     // part carried back from step t + 1 through the recurrence. Walking the steps in reverse is
     // what "through time" means; each step's contribution to every parameter is summed, since
     // the same matrices act at every step.
     workspace.hidden_delta.assign(hidden_size_, 0.0);
-    workspace.step_delta.assign(hidden_size_, 0.0);
+    workspace.cell_delta.assign(hidden_size_, 0.0);
+    workspace.step_delta.assign(gate_rows(), 0.0);
     std::vector<double>& hidden_delta = workspace.hidden_delta;
-    std::vector<double>& step_delta = workspace.step_delta;
     if (reach != nullptr) {
         reach->clear();
     }
@@ -182,6 +427,10 @@ void CharRnn::backward(const TokenSequence& ids, const std::size_t offset,
         const std::size_t target = ids[offset + step + 1];
         const double* hidden = workspace.hidden.data() + step * hidden_size_;
         const double* previous = step == 0 ? initial.data() : hidden - hidden_size_;
+        const double* previous_cell =
+            !has_cell ? nullptr
+            : step == 0 ? initial.data() + hidden_size_
+                        : workspace.cell.data() + (step - 1) * hidden_size_;
         const double* probabilities = workspace.probabilities.data() + step * vocabulary_size_;
 
         // dL/dz_t = p_t - onehot(target), unless this step's loss is excluded.
@@ -198,35 +447,21 @@ void CharRnn::backward(const TokenSequence& ids, const std::size_t offset,
             }
         }
         if (reach != nullptr) {
+            // The gradient with respect to the state as it is passed between steps: h_t, plus
+            // c_t as carried in from step t + 1 for the LSTM.
             double squared = 0.0;
             for (const double value : hidden_delta) {
                 squared += value * value;
             }
+            if (has_cell) {
+                for (const double value : workspace.cell_delta) {
+                    squared += value * value;
+                }
+            }
             reach->push_back(std::sqrt(squared));
         }
 
-        // Through the tanh: dL/da_t = dL/dh_t * (1 - h_t^2).
-        for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
-            step_delta[unit] = hidden_delta[unit] * (1.0 - hidden[unit] * hidden[unit]);
-        }
-        for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
-            const double delta = step_delta[unit];
-            input_gradient[unit * vocabulary_size_ + input] += delta;
-            hidden_bias_gradient[unit] += delta;
-            double* row = recurrent_gradient + unit * hidden_size_;
-            for (std::size_t source = 0; source < hidden_size_; ++source) {
-                row[source] += delta * previous[source];
-            }
-        }
-        // Carry to the previous step: dL/dh_{t-1} = W_hh^T dL/da_t.
-        std::fill(hidden_delta.begin(), hidden_delta.end(), 0.0);
-        for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
-            const double delta = step_delta[unit];
-            const double* row = recurrent_weights + unit * hidden_size_;
-            for (std::size_t source = 0; source < hidden_size_; ++source) {
-                hidden_delta[source] += delta * row[source];
-            }
-        }
+        step_backward(input, previous, previous_cell, step, flat, workspace);
     }
 }
 
@@ -514,7 +749,8 @@ void CharRnn::save(const std::string& path) const {
     if (!stream) {
         throw std::runtime_error("cannot open checkpoint for writing: " + path);
     }
-    stream << "ml_scratch_char_rnn 1\n"
+    stream << "ml_scratch_char_rnn 2\n"
+           << "cell " << static_cast<int>(cell_) << '\n'
            << "vocabulary " << vocabulary_size_ << '\n'
            << "hidden " << hidden_size_ << '\n'
            << "parameters " << parameters_.size() << '\n'
@@ -547,8 +783,19 @@ CharRnn CharRnn::load(const std::string& path) {
     };
 
     expect("ml_scratch_char_rnn");
-    if (read_size() != 1) {
+    const std::size_t version = read_size();
+    if (version < 1 || version > 2) {
         throw std::runtime_error("unsupported checkpoint version in " + path);
+    }
+    // Version 1 predates the gated cells and is always an elman network.
+    RecurrentCell cell = RecurrentCell::elman;
+    if (version >= 2) {
+        expect("cell");
+        const std::size_t encoded = read_size();
+        if (encoded > static_cast<std::size_t>(RecurrentCell::gru)) {
+            throw std::runtime_error("unknown cell in checkpoint " + path);
+        }
+        cell = static_cast<RecurrentCell>(encoded);
     }
     expect("vocabulary");
     const std::size_t vocabulary_size = read_size();
@@ -557,7 +804,7 @@ CharRnn CharRnn::load(const std::string& path) {
     if (vocabulary_size < 2 || hidden_size == 0) {
         throw std::runtime_error("checkpoint declares an invalid architecture: " + path);
     }
-    CharRnn network{vocabulary_size, hidden_size};
+    CharRnn network{vocabulary_size, hidden_size, 0, cell};
     expect("parameters");
     const std::size_t count = read_size();
     if (count != network.parameter_count()) {

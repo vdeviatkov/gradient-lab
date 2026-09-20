@@ -140,6 +140,84 @@ void test_gradient_matches_finite_differences() {
     }
 }
 
+void test_gated_cells_by_hand() {
+    // One hidden unit over a vocabulary of two, every weight chosen so the step can be followed
+    // by hand. LSTM flat layout: W_x rows i, f, o, g (each 1 x 2), W_h rows i, f, o, g (1 x 1),
+    // biases i, f, o, g, then W_hy (2 x 1) and b_y (2).
+    ml_scratch::CharRnn lstm{2, 1, 0, ml_scratch::RecurrentCell::lstm};
+    require(lstm.state_size() == 2, "an LSTM carries h and c");
+    require(lstm.parameter_count() == 4 * 2 + 4 * 1 + 4 + 2 + 2, "LSTM parameter count");
+    lstm.set_parameters({0.5, -0.5, 0.3, 0.1, -0.2, 0.4, 0.7, -0.3, // W_x
+                         0.6, 0.2, -0.4, 0.9,                       // W_h
+                         0.0, 1.0, 0.1, -0.1,                       // b
+                         1.0, -1.0, 0.0, 0.0});                     // W_hy, b_y
+    const auto sig = [](const double v) { return 1.0 / (1.0 + std::exp(-v)); };
+    // Input id 1 from the zero state: h_{t-1} = 0, c_{t-1} = 0.
+    const double i = sig(-0.5 + 0.0);
+    const double f = sig(0.1 + 1.0);
+    const double o = sig(0.4 + 0.1);
+    const double g = std::tanh(-0.3 - 0.1);
+    const double c = f * 0.0 + i * g;
+    const double h = o * std::tanh(c);
+    ml_scratch::CharRnn::State state = lstm.initial_state();
+    static_cast<void>(lstm.loss({1, 0}, state));
+    require_near(state[0], h, 1e-15, "LSTM hidden value by hand");
+    require_near(state[1], c, 1e-15, "LSTM cell value by hand");
+    // The forget gate's bias starts at one on a fresh cell.
+    const ml_scratch::CharRnn fresh{2, 3, 4, ml_scratch::RecurrentCell::lstm};
+    const auto fresh_parameters = fresh.parameters();
+    const std::size_t bias_offset = 4 * 3 * 2 + 4 * 3 * 3;
+    require(fresh_parameters[bias_offset + 3] == 1.0 && fresh_parameters[bias_offset + 4] == 1.0 &&
+                fresh_parameters[bias_offset] == 0.0,
+            "a fresh LSTM's forget biases are one and its other biases zero");
+
+    // GRU flat layout: W_x rows r, z, n; W_h rows r, z, n; biases r, z, n; W_hy; b_y.
+    ml_scratch::CharRnn gru{2, 1, 0, ml_scratch::RecurrentCell::gru};
+    require(gru.state_size() == 1, "a GRU carries h alone");
+    gru.set_parameters({0.5, -0.5, 0.3, 0.1, -0.2, 0.4, // W_x
+                        0.6, 0.2, -0.4,                  // W_h
+                        0.0, 0.1, -0.1,                  // b
+                        1.0, -1.0, 0.0, 0.0});
+    // Two steps, ids 1 then 0, so the second step has a non-zero previous state.
+    const double r1 = sig(-0.5 + 0.0);
+    const double z1 = sig(0.1 + 0.1);
+    const double n1 = std::tanh(0.4 + r1 * (-0.4 * 0.0) - 0.1);
+    const double h1 = (1.0 - z1) * n1 + z1 * 0.0;
+    const double r2 = sig(0.5 + 0.6 * h1 + 0.0);
+    const double z2 = sig(0.3 + 0.2 * h1 + 0.1);
+    const double n2 = std::tanh(-0.2 + r2 * (-0.4 * h1) - 0.1);
+    const double h2 = (1.0 - z2) * n2 + z2 * h1;
+    state = gru.initial_state();
+    static_cast<void>(gru.loss({1, 0, 1}, state));
+    require_near(state[0], h2, 1e-15, "GRU hidden value by hand after two steps");
+}
+
+void test_gated_gradients_match_finite_differences() {
+    const ml_scratch::TokenSequence ids{0, 3, 1, 4, 4, 2, 0, 1, 3};
+    for (const auto cell : {ml_scratch::RecurrentCell::lstm, ml_scratch::RecurrentCell::gru}) {
+        ml_scratch::CharRnn network{5, 4, 3, cell};
+        const std::string name = ml_scratch::recurrent_cell_name(cell);
+        require(ml_scratch::check_gradient(network.gradient(ids), network.numerical_gradient(ids))
+                    .passed,
+                name + " backpropagation through time failed its gradient check");
+        ml_scratch::CharRnn::State state(network.state_size());
+        for (std::size_t index = 0; index < state.size(); ++index) {
+            state[index] = 0.3 * static_cast<double>(index + 1) * (index % 2 == 0 ? 1.0 : -1.0);
+        }
+        require(ml_scratch::check_gradient(network.gradient(ids, state),
+                                           network.numerical_gradient(ids, state))
+                    .passed,
+                name + " gradient from a carried state failed its check");
+        // Scoring in halves with the state carried must agree with scoring at once, which is
+        // what makes the carried (h, c) pair a complete state.
+        ml_scratch::CharRnn::State carried = network.initial_state();
+        const double first = network.loss({0, 3, 1, 4, 4}, carried);
+        const double second = network.loss({4, 2, 0, 1, 3}, carried);
+        require_near((first * 4.0 + second * 4.0) / 8.0, network.loss(ids), 1e-14,
+                     name + ": carrying the state should not change the loss");
+    }
+}
+
 void test_gradient_reach_decays_for_a_contractive_recurrence() {
     // With a small recurrent matrix the Jacobian product shrinks every step, so the gradient of
     // the last prediction with respect to earlier states must fall geometrically with the lag.
@@ -220,8 +298,8 @@ void test_training_learns_a_periodic_sequence() {
 // Where the truncation window is the lever. The stream alternates a random bit with a copy of
 // the random bit written three pairs earlier: r1 c1 r2 c2 ... with c_i = r_{i-3}. The random
 // bits cannot be predicted, so the best possible loss is ln 2 / 2 = 0.347 nats: zero on the
-// copies, ln 2 on the random bits. Reaching it means recalling a bit from five steps back, which
-// nothing in the stream rewards until the gradient spans those five steps. A periodic pattern
+// copies, ln 2 on the random bits. Reaching it means recalling a bit that entered six steps
+// before, which nothing in the stream rewards until the gradient spans those steps. A periodic pattern
 // would not do here: a carried hidden state can learn to count with a window of one, because
 // each step's loss already tells the recurrence which state to be in next.
 void test_truncation_limits_what_is_learned() {
@@ -367,6 +445,8 @@ int main() {
     try {
         test_forward_pass_by_hand();
         test_gradient_matches_finite_differences();
+        test_gated_cells_by_hand();
+        test_gated_gradients_match_finite_differences();
         test_gradient_reach_decays_for_a_contractive_recurrence();
         test_gradient_clipping();
         test_training_learns_a_periodic_sequence();

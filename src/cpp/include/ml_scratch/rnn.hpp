@@ -47,22 +47,52 @@ struct RnnTrainingResult {
     std::size_t updates{0};
 };
 
-// A character-level recurrent network with a single tanh hidden layer:
-//   h_t = tanh(W_xh x_t + W_hh h_{t-1} + b_h),   z_t = W_hy h_t + b_y,
-// with x_t the one-hot input character and z_t the logits over the next one, trained by softmax
-// cross-entropy. Gradients are derived explicitly by backpropagation through time.
+// The recurrence that turns the previous state and the input into the next state. Every cell
+// reads a one-hot character x_t and produces a hidden vector h_t of hidden_size values that the
+// output layer reads; they differ in how h_t is computed and in what else is carried.
+enum class RecurrentCell {
+    // h_t = tanh(W_x x_t + W_h h_{t-1} + b). One matrix multiply per step and a state that is
+    // rewritten in full every step, which is what makes its gradient a product of Jacobians.
+    elman,
+    // Long short-term memory. A cell state c_t that is updated additively,
+    //   c_t = f_t * c_{t-1} + i_t * g_t,   h_t = o_t * tanh(c_t),
+    // with sigmoid input, forget and output gates i, f, o and a tanh candidate g, each an affine
+    // function of x_t and h_{t-1}. The state carried between steps is (h_t, c_t). The forget
+    // gate's bias starts at one, so a fresh cell remembers by default.
+    lstm,
+    // Gated recurrent unit. A reset gate r and an update gate z, both sigmoid, and a candidate
+    //   n_t = tanh(W_xn x_t + r_t * (W_hn h_{t-1}) + b_n),   h_t = (1 - z_t) * n_t + z_t * h_{t-1}.
+    // The update gate interpolates between keeping the old state and taking the candidate, which
+    // is the additive path again, with one vector of state instead of two.
+    gru,
+};
+
+[[nodiscard]] const char* recurrent_cell_name(RecurrentCell cell);
+
+// A character-level recurrent network: a recurrent cell over one-hot inputs, and a linear layer
+// from its hidden vector to logits over the next character,
+//   z_t = W_hy h_t + b_y,
+// trained by softmax cross-entropy. Gradients are derived explicitly by backpropagation through
+// time for every cell.
 //
-// Parameters are exposed as one flat vector in the order W_xh (row per hidden unit, column per
-// vocabulary id), W_hh (row per hidden unit, column per previous hidden unit), b_h, W_hy (row per
-// vocabulary id), b_y.
+// Parameters are exposed as one flat vector in the order W_x (one block of hidden_size rows per
+// gate, a column per vocabulary id), W_h (the same blocks, a column per previous hidden unit),
+// b (one entry per gate row), W_hy (row per vocabulary id), b_y. The elman cell has one gate
+// block, the LSTM four in the order i, f, o, g, and the GRU three in the order r, z, n.
 class CharRnn {
   public:
-    // The hidden state carried between calls; hidden_size values.
+    // The state carried between calls: h for the elman and GRU cells, h followed by c for the
+    // LSTM; state_size() values.
     using State = std::vector<double>;
 
-    CharRnn(std::size_t vocabulary_size, std::size_t hidden_size, std::uint32_t seed = 0);
+    CharRnn(std::size_t vocabulary_size, std::size_t hidden_size, std::uint32_t seed = 0,
+            RecurrentCell cell = RecurrentCell::elman);
 
-    [[nodiscard]] State initial_state() const { return State(hidden_size_, 0.0); }
+    [[nodiscard]] State initial_state() const { return State(state_size(), 0.0); }
+    [[nodiscard]] std::size_t state_size() const noexcept {
+        return cell_ == RecurrentCell::lstm ? 2 * hidden_size_ : hidden_size_;
+    }
+    [[nodiscard]] RecurrentCell cell() const noexcept { return cell_; }
 
     // Mean cross-entropy per predicted character over ids[1..], each predicted from everything
     // before it, starting from `state` and advancing it to the end. Any length: the forward pass
@@ -84,8 +114,9 @@ class CharRnn {
 
     // How far back a single prediction's gradient reaches. Takes the loss of the LAST prediction
     // alone and returns, for lag = 0, 1, ..., the Euclidean norm of its gradient with respect to
-    // the hidden state that many steps earlier. A product of `lag` Jacobians, so it shrinks or
-    // grows geometrically; how fast is the measurement.
+    // the state that many steps earlier — the whole carried state, so h and c together for the
+    // LSTM. For the elman cell this is a product of `lag` Jacobians, so it shrinks or grows
+    // geometrically; how fast, and whether a gated cell escapes that, is the measurement.
     [[nodiscard]] std::vector<double> gradient_reach(const TokenSequence& ids) const;
 
     RnnTrainingResult fit(const TokenSequence& train, const RnnTrainingConfig& config = {});
@@ -113,9 +144,13 @@ class CharRnn {
     // Everything one backward pass needs from the forward pass, sized for one window and reused.
     struct Workspace {
         std::vector<double> hidden;        // [step][unit], h_t
+        std::vector<double> cell;          // [step][unit], c_t; LSTM only
+        std::vector<double> gates;         // [step][gate row], the activated gate values
+        std::vector<double> extra;         // [step][unit], tanh(c_t) for the LSTM, W_hn h_{t-1} for the GRU
         std::vector<double> probabilities; // [step][id], softmax(z_t)
         std::vector<double> hidden_delta;  // dL/dh_t for the step being visited
-        std::vector<double> step_delta;    // dL/da_t
+        std::vector<double> cell_delta;    // dL/dc_t carried from the step after; LSTM only
+        std::vector<double> step_delta;    // dL/d(pre-activation) of every gate row
         std::vector<double> logits;
     };
 
@@ -130,21 +165,32 @@ class CharRnn {
     void backward(const TokenSequence& ids, std::size_t offset, std::size_t steps,
                   const State& initial, double scale, bool last_only, std::vector<double>& flat,
                   Workspace& workspace, std::vector<double>* reach = nullptr) const;
+    // One cell step forward from (previous_hidden, previous_cell) with input id `input`, writing
+    // the step's caches; and its backward, which reads `hidden_delta` (dL/dh_t) and `cell_delta`
+    // (dL/dc_t carried in), accumulates the parameter gradient, and leaves dL/dh_{t-1} and
+    // dL/dc_{t-1} in the same two buffers.
+    void step_forward(std::size_t input, const double* previous_hidden,
+                      const double* previous_cell, std::size_t step, Workspace& workspace) const;
+    void step_backward(std::size_t input, const double* previous_hidden,
+                       const double* previous_cell, std::size_t step, std::vector<double>& flat,
+                       Workspace& workspace) const;
     void validate_ids(const TokenSequence& ids) const;
     void validate_state(const State& state) const;
     void softmax_into(const std::vector<double>& logits, double temperature,
                       std::vector<double>& probabilities) const;
 
+    // Gate rows per cell: 1, 4, or 3 blocks of hidden_size.
+    [[nodiscard]] std::size_t gate_rows() const noexcept;
     // Offsets of each block inside the flat parameter vector.
     [[nodiscard]] std::size_t input_offset() const noexcept { return 0; }
     [[nodiscard]] std::size_t recurrent_offset() const noexcept {
-        return hidden_size_ * vocabulary_size_;
+        return gate_rows() * vocabulary_size_;
     }
     [[nodiscard]] std::size_t hidden_bias_offset() const noexcept {
-        return recurrent_offset() + hidden_size_ * hidden_size_;
+        return recurrent_offset() + gate_rows() * hidden_size_;
     }
     [[nodiscard]] std::size_t output_offset() const noexcept {
-        return hidden_bias_offset() + hidden_size_;
+        return hidden_bias_offset() + gate_rows();
     }
     [[nodiscard]] std::size_t output_bias_offset() const noexcept {
         return output_offset() + vocabulary_size_ * hidden_size_;
@@ -152,6 +198,7 @@ class CharRnn {
 
     std::size_t vocabulary_size_;
     std::size_t hidden_size_;
+    RecurrentCell cell_;
     std::vector<double> parameters_;
 };
 

@@ -107,6 +107,10 @@ add_executable(cpp_char_rnn experiments/15_char_rnn/cpp_main.cpp)
 target_link_libraries(cpp_char_rnn PRIVATE ml_scratch_cpp)
 enable_project_warnings(cpp_char_rnn)
 
+add_executable(cpp_lstm_gru experiments/16_lstm_gru/cpp_main.cpp)
+target_link_libraries(cpp_lstm_gru PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_lstm_gru)
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
