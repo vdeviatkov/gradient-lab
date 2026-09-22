@@ -28,6 +28,7 @@ add_library(
     src/cpp/src/rnn.cpp
     src/cpp/src/softmax_regression.cpp
     src/cpp/src/text_corpus.cpp
+    src/cpp/src/transformer.cpp
     src/cpp/src/xor_mlp.cpp
 )
 target_include_directories(
@@ -111,6 +112,10 @@ add_executable(cpp_lstm_gru experiments/16_lstm_gru/cpp_main.cpp)
 target_link_libraries(cpp_lstm_gru PRIVATE ml_scratch_cpp)
 enable_project_warnings(cpp_lstm_gru)
 
+add_executable(cpp_transformer experiments/17_transformer/cpp_main.cpp)
+target_link_libraries(cpp_transformer PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_transformer)
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
@@ -192,4 +197,9 @@ if(BUILD_TESTING)
     target_link_libraries(cpp_rnn_test PRIVATE ml_scratch_cpp)
     enable_project_warnings(cpp_rnn_test)
     add_test(NAME cpp_rnn_test COMMAND cpp_rnn_test)
+
+    add_executable(cpp_transformer_test tests/cpp/transformer_test.cpp)
+    target_link_libraries(cpp_transformer_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_transformer_test)
+    add_test(NAME cpp_transformer_test COMMAND cpp_transformer_test)
 endif()

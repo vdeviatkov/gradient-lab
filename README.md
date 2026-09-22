@@ -43,7 +43,7 @@ meaningful differences.
 | Conditional GAN: MNIST digit generation | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | RNN: character-level sequence modeling | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | LSTM and GRU: character-level sequence modeling | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
-| Tiny Transformer: character-level language modeling | Planned | Planned | Planned | Planned | Planned | Planned |
+| Tiny Transformer: character-level language modeling | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Snake agent: Q-learning and DQN | Planned | Planned | Planned | Planned | Planned | Planned |
 | Implementation benchmarks | Planned | Planned | Planned | Planned | Planned | Planned |
 
@@ -399,6 +399,31 @@ cell, while on the copy stream the same cell carries 146% of it to the source bi
 grows along the cell path. See the [LSTM and GRU mathematics](docs/mathematics/lstm_gru.md) and
 the [reproducible experiment](experiments/16_lstm_gru/README.md).
 
+### A decoder-only Transformer
+
+`CharTransformer`: token embeddings plus a sinusoidal positional encoding, pre-normalized blocks of
+causal multi-head self-attention and a feed-forward layer with residual connections, a final
+normalization, and logits over the next character, with an optional learned relative position
+bias on the attention scores. The backward pass — softmax and bilinear score included — is derived
+by hand and checked against central differences; a test shows one block is exactly
+permutation-invariant over the past without positions and that a second block leaks order through
+the causal mask. Training draws random windows; evaluation reads text in abutting or strided
+windows, and `attention_weights` exposes what each head looks at.
+
+On the shared corpus the 107711-parameter Transformer is ahead of both recurrent networks at
+every epoch after the first and beats the elman cell on test after 8 epochs (1.935 against 1.964
+after 12), but not the 70-unit GRU (1.919), at 3.3 times the parameters and 3.8 times the time per
+character; at the recurrent networks' own parameter count it is behind both. Six of its eight
+heads attend within three characters and one looks across the whole window. The ablations say
+what it needs: without positions the loss is worse by 0.33 nats, a 512-parameter relative
+position bias is the single most valuable change, and at width 32 one head beat four and a
+16-character context beat 64. On a twenty-step copy stream that the elman cell scores chance on,
+the Transformer reaches the floor with a head putting 81% of its weight on the source bit — and
+cannot without positional information. Getting there required marking the stream, because a
+sinusoid has no period-two component from which a stateless model can read parity; the reason is
+in the docs. See the [Transformer mathematics](docs/mathematics/transformer.md) and the
+[reproducible experiment](experiments/17_transformer/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -444,11 +469,17 @@ a recurrent network learning a periodic sequence and generating its continuation
 window blocking a dependency longer than itself on a delayed-copy stream, hand-computed LSTM and
 GRU steps, both gated cells' backpropagation through time checked against central differences
 from the zero state and from a carried state with the carried (h, c) pair verified as a complete
-state, recurrent seed reproducibility and checkpoint round trips, and the project smoke test.
+state, recurrent seed reproducibility and checkpoint round trips, the Transformer's parameter
+layout, causal masking and attention rows summing to one, a single block's permutation invariance
+without positions and a second block leaking order, the full Transformer gradient checked against
+central differences with and without positions and with the relative bias, the loss as the mean
+of each prefix's prediction, abutting and strided evaluation, training on a periodic sequence and
+generating past the context, attention learning a twenty-step copy with a head on the source bit,
+Transformer seed reproducibility and checkpoint round trips, and the project smoke test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, sixteen
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, seventeen
 experiment executables, and CTest executables without downloading a testing framework. The tests
 never need a downloaded dataset: the IDX reader is exercised against small files the test writes
 itself.
@@ -480,6 +511,7 @@ ctest --test-dir build --output-on-failure
 # Needs Tiny Shakespeare; see scripts/download_tiny_shakespeare.sh
 ./build/cpp_char_rnn
 ./build/cpp_lstm_gru
+./build/cpp_transformer
 ```
 
 ## Planned roadmap
