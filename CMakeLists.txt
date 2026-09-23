@@ -9,6 +9,7 @@ project(
 
 add_library(
     ml_scratch_cpp STATIC
+    src/cpp/src/benchmark.cpp
     src/cpp/src/cifar10.cpp
     src/cpp/src/convolution.cpp
     src/cpp/src/dataset.cpp
@@ -122,6 +123,10 @@ add_executable(cpp_snake_rl experiments/18_snake_rl/cpp_main.cpp)
 target_link_libraries(cpp_snake_rl PRIVATE ml_scratch_cpp)
 enable_project_warnings(cpp_snake_rl)
 
+add_executable(cpp_benchmarks experiments/19_benchmarks/cpp_main.cpp)
+target_link_libraries(cpp_benchmarks PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_benchmarks)
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
@@ -218,4 +223,9 @@ if(BUILD_TESTING)
     target_link_libraries(cpp_reinforcement_test PRIVATE ml_scratch_cpp)
     enable_project_warnings(cpp_reinforcement_test)
     add_test(NAME cpp_reinforcement_test COMMAND cpp_reinforcement_test)
+
+    add_executable(cpp_benchmark_test tests/cpp/benchmark_test.cpp)
+    target_link_libraries(cpp_benchmark_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_benchmark_test)
+    add_test(NAME cpp_benchmark_test COMMAND cpp_benchmark_test)
 endif()

@@ -45,7 +45,7 @@ meaningful differences.
 | LSTM and GRU: character-level sequence modeling | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Tiny Transformer: character-level language modeling | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Snake agent: Q-learning and DQN | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
-| Implementation benchmarks | Planned | Planned | Planned | Planned | Planned | Planned |
+| Implementation benchmarks | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 
 `—` means that a standalone Triton kernel would not add meaningful educational value for that
 milestone.
@@ -448,6 +448,27 @@ schedule changed nothing outside the noise, and the README says why. See the
 [reinforcement learning mathematics](docs/mathematics/reinforcement_learning.md) and the
 [reproducible experiment](experiments/18_snake_rl/README.md).
 
+### Implementation benchmarks
+
+A benchmarking harness — auto-tuned iteration counts, a cold first call reported separately from
+the steady state, seven repetitions summarized by their median, a reset callback outside the timed
+region, `do_not_optimize`, measured clock resolution, captured environment, peak resident memory,
+and JSON output that keeps every repetition — applied to the repository's own implementations.
+`scripts/benchmark_build.sh` times a clean build, which is the one cost a running program cannot
+measure about itself.
+
+The numbers put costs on what earlier milestones asserted. The gated cells cost 2.4x (GRU) and
+3.2x (LSTM) an elman cell of the same width, close to their gate counts. One tabular Q-learning
+update takes **1.9 ns** against 178 µs for one DQN batch — 93000x — and a Snake step costs 37 ns,
+so a 150-step episode is 5.6 µs of environment against 26.7 ms of learning. The three fastest
+benchmarks have the largest cold ratios, up to **88x**, which is the case for warm-up stated as a
+measurement. Two findings cut against expectation: reusing the forward pass's scratch space
+instead of allocating it saves 0.9% against a 0.1% spread, because at this size the arithmetic
+dominates the allocator entirely; and the CNN forward pass, alone among the fourteen, falls into
+two clusters a factor of 2.3 apart between runs of the same binary — neither code alignment nor
+machine load explains it, and the README says so rather than quoting a number it cannot stand
+behind. See the [reproducible experiment](experiments/19_benchmarks/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -505,11 +526,15 @@ and its packed index, seeded food sequences and rendering, the linear exploratio
 tabular Q-learning update by hand including a terminal transition's missing future, seeded
 exploration, the replay buffer's overwriting and uniform sampling, a network learning per-action
 values, reinforcement seed reproducibility and checkpoint round trips, greedy evaluation on fixed
-seeds distinguishing a dying policy from a circling one, and the project smoke test.
+seeds distinguishing a dying policy from a circling one, the benchmark harness's statistics by
+hand, its measurement of a known sleep, auto-tuning and exact call counts, a reset callback that
+runs outside the timed region, `do_not_optimize` keeping work a compiler would otherwise delete,
+clock and environment capture, source-size counting, JSON output shape and escaping, and the
+project smoke test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, eighteen
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, nineteen
 experiment executables, and CTest executables without downloading a testing framework. The tests
 never need a downloaded dataset: the IDX reader is exercised against small files the test writes
 itself.
@@ -545,6 +570,7 @@ ctest --test-dir build --output-on-failure
 
 # Needs no data
 ./build/cpp_snake_rl
+ML_SCRATCH_BUILD_TYPE=Release ./build/cpp_benchmarks
 ```
 
 ## Planned roadmap
