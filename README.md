@@ -44,7 +44,7 @@ meaningful differences.
 | RNN: character-level sequence modeling | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | LSTM and GRU: character-level sequence modeling | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Tiny Transformer: character-level language modeling | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
-| Snake agent: Q-learning and DQN | Planned | Planned | Planned | Planned | Planned | Planned |
+| Snake agent: Q-learning and DQN | Planned | Planned | Planned | Planned | ✅ Complete | Planned |
 | Implementation benchmarks | Planned | Planned | Planned | Planned | Planned | Planned |
 
 `—` means that a standalone Triton kernel would not add meaningful educational value for that
@@ -424,6 +424,30 @@ sinusoid has no period-two component from which a stateless model can read parit
 in the docs. See the [Transformer mathematics](docs/mathematics/transformer.md) and the
 [reproducible experiment](experiments/17_transformer/README.md).
 
+### Reinforcement learning on Snake
+
+The first milestone without labels. A Snake environment written from scratch — three relative
+actions, seeded food, and death distinguished from truncation so a cut-off episode is not treated
+as terminal — with `TabularQLearning`, a `ReplayBuffer`, and `DeepQLearning`: the same Bellman
+target, once into a table and once into a network whose untaken actions get no gradient. Every
+agent is scored by greedy rollouts on fixed held-out seeds, because an epsilon-greedy score
+measures the policy plus its noise.
+
+Both learners beat a random policy eighty-fold. Three results are worth the read. A four-line
+scripted food-seeker scores 17.55 and beats the tabular agent's 16.32 after 3000 episodes,
+because the eleven-feature observation was built to contain what a greedy food-seeker needs — the
+learners have to earn their keep elsewhere. Only **256 of the 2048** observation bit patterns can
+ever occur, since the heading is one-hot and the food cannot be both left and right, and that
+makes the table competitive: at 30000 episodes it scores 19.71 in 0.85 s against the network's
+18.86 in 47.7 s, 56 times cheaper, while the network is far more episode-efficient (18.6 after
+600 episodes, a score the table does not reach in 3000). And of the two mechanisms that are
+supposed to make a network trainable here, only replay did anything measurable: without it the
+run's last six evaluations swing six points between neighbours (16.8, 20.5, 15.8, 14.5, 20.6,
+14.7) against the full agent's two and a half; removing the target network or the exploration
+schedule changed nothing outside the noise, and the README says why. See the
+[reinforcement learning mathematics](docs/mathematics/reinforcement_learning.md) and the
+[reproducible experiment](experiments/18_snake_rl/README.md).
+
 ## Testing and quality checks
 
 ```bash
@@ -475,11 +499,17 @@ without positions and a second block leaking order, the full Transformer gradien
 central differences with and without positions and with the relative bias, the loss as the mean
 of each prefix's prediction, abutting and strided evaluation, training on a periodic sequence and
 generating past the context, attention learning a twenty-step copy with a head on the source bit,
-Transformer seed reproducibility and checkpoint round trips, and the project smoke test.
+Transformer seed reproducibility and checkpoint round trips, the Snake environment's movement,
+turning, death, truncation without a death penalty, growth on eating, the eleven-bit observation
+and its packed index, seeded food sequences and rendering, the linear exploration schedule, the
+tabular Q-learning update by hand including a terminal transition's missing future, seeded
+exploration, the replay buffer's overwriting and uniform sampling, a network learning per-action
+values, reinforcement seed reproducibility and checkpoint round trips, greedy evaluation on fixed
+seeds distinguishing a dying policy from a circling one, and the project smoke test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, seventeen
+The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, eighteen
 experiment executables, and CTest executables without downloading a testing framework. The tests
 never need a downloaded dataset: the IDX reader is exercised against small files the test writes
 itself.
@@ -512,6 +542,9 @@ ctest --test-dir build --output-on-failure
 ./build/cpp_char_rnn
 ./build/cpp_lstm_gru
 ./build/cpp_transformer
+
+# Needs no data
+./build/cpp_snake_rl
 ```
 
 ## Planned roadmap

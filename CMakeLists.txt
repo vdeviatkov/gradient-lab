@@ -25,7 +25,9 @@ add_library(
     src/cpp/src/pca.cpp
     src/cpp/src/perceptron.cpp
     src/cpp/src/project_info.cpp
+    src/cpp/src/reinforcement.cpp
     src/cpp/src/rnn.cpp
+    src/cpp/src/snake.cpp
     src/cpp/src/softmax_regression.cpp
     src/cpp/src/text_corpus.cpp
     src/cpp/src/transformer.cpp
@@ -116,6 +118,10 @@ add_executable(cpp_transformer experiments/17_transformer/cpp_main.cpp)
 target_link_libraries(cpp_transformer PRIVATE ml_scratch_cpp)
 enable_project_warnings(cpp_transformer)
 
+add_executable(cpp_snake_rl experiments/18_snake_rl/cpp_main.cpp)
+target_link_libraries(cpp_snake_rl PRIVATE ml_scratch_cpp)
+enable_project_warnings(cpp_snake_rl)
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
@@ -202,4 +208,14 @@ if(BUILD_TESTING)
     target_link_libraries(cpp_transformer_test PRIVATE ml_scratch_cpp)
     enable_project_warnings(cpp_transformer_test)
     add_test(NAME cpp_transformer_test COMMAND cpp_transformer_test)
+
+    add_executable(cpp_snake_test tests/cpp/snake_test.cpp)
+    target_link_libraries(cpp_snake_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_snake_test)
+    add_test(NAME cpp_snake_test COMMAND cpp_snake_test)
+
+    add_executable(cpp_reinforcement_test tests/cpp/reinforcement_test.cpp)
+    target_link_libraries(cpp_reinforcement_test PRIVATE ml_scratch_cpp)
+    enable_project_warnings(cpp_reinforcement_test)
+    add_test(NAME cpp_reinforcement_test COMMAND cpp_reinforcement_test)
 endif()
