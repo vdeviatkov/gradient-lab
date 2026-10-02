@@ -28,7 +28,7 @@ meaningful differences.
 |---|---:|---:|---:|---:|---:|---:|
 | Perceptron: AND / OR | ✅ Complete | Planned | Planned | Planned | ✅ Complete | — |
 | Perceptron: XOR limitation | ✅ Demonstrated | Planned | Planned | Planned | ✅ Demonstrated | — |
-| Two-layer MLP: XOR | Planned | Planned | Planned | Planned | ✅ Complete | — |
+| Two-layer MLP: XOR | ✅ Complete | Planned | Planned | Planned | ✅ Complete | — |
 | Linear regression | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Binary logistic regression | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | PCA and k-means | Planned | Planned | Planned | Planned | ✅ Complete | — |
@@ -62,8 +62,10 @@ python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
 
 python -m ml_scratch.pure.perceptron_experiment
-# Equivalent installed command:
+python -m ml_scratch.pure.xor_mlp_experiment
+# Equivalent installed commands:
 ml-perceptron-logic-gates
+ml-xor-mlp
 ```
 
 Optional extras can be installed only when their milestones need them:
@@ -110,13 +112,11 @@ stopping condition, deterministic seed, and verification criteria mirror the pur
 
 ### A two-layer MLP for XOR
 
-The C++ milestone continues from the perceptron's expected XOR failure with a `2 → 4 → 1` network:
-
-- two inputs;
-- one hidden layer with four tanh units;
-- one sigmoid output;
-- binary cross-entropy loss; and
-- full-batch gradient descent with explicitly derived gradients.
+Implemented twice, in pure Python and in C++, from the same architecture: a `2 → h → 1` network
+with tanh hidden units, one linear output, binary cross-entropy with the sigmoid applied inside the
+loss, and full-batch gradient descent on gradients written out from the chain rule. Full batch
+rather than stochastic, because the dataset is the complete four-row truth table — there is nothing
+to sample, so a run is a deterministic function of its seed.
 
 “Two-layer” counts the two trainable affine transformations (input-to-hidden and
 hidden-to-output). The hidden nonlinearities allow the network to form multiple decision
@@ -124,9 +124,24 @@ boundaries, so it can represent XOR. Training is considered converged only when 
 predictions are correct and the measured loss reaches the configured threshold. See
 [the MLP mathematics](docs/mathematics/xor_mlp.md) for the forward and backward equations.
 
-The implementation contains the gradients needed for this concrete network. The
+The pure-Python experiment goes past demonstrating the fix and measures how much hidden layer the
+fix needs. Over fifty seeds per width: **one hidden unit never solves XOR**, and that is a
+representational limit rather than a training one — `tanh` is monotone, so a single hidden unit is
+still one straight boundary, and 45 of its 50 failures end at exactly the perceptron's 0.75
+ceiling. Two units, the theoretical minimum, succeed 29 times in 50, and every one of the 21
+failures lands at the same trap: accuracy 0.50 at a loss of 0.3468, which is `(ln 2) / 2`, with
+two rows learned and two left at exactly chance — a plateau whose gradient norm is about 2.4e-4,
+flat enough that ten thousand epochs never leave it.
+Four units succeed from every seed, and eight are no more reliable but reach the target in 281
+median epochs against 340. Width buys reliability first and speed second. The two implementations
+converge to the same place — loss 0.019932 against 0.019930, probabilities within a percent — in
+344 and 376 epochs respectively, a difference that is entirely the two languages' generators
+producing different initial weights from the same seed, which
+[the reproducibility design](docs/design/reproducibility.md) states in advance.
+
+The hand-derived gradients are checked against central differences, to 9.1e-12 here; the
 [backpropagation milestone](docs/mathematics/backpropagation.md) turns that focused derivation into
-a general design and verifies its gradients numerically.
+a general design. See the [reproducible experiment](experiments/02_xor_mlp/README.md).
 
 ### Linear regression
 
@@ -477,7 +492,13 @@ ruff check .
 ```
 
 Python tests cover the truth-table datasets, predictions, successful AND/OR training, the expected
-XOR failure, input validation, and seed reproducibility. CTest covers the same C++ perceptron
+XOR failure, input validation, and seed reproducibility; and for the two-layer MLP, a
+hand-computed forward pass, the mean cross-entropy and its overflow-free logit form, the output
+delta collapsing to `p - y`, the hand-derived gradient against central differences at three
+widths, a numerical gradient that leaves the parameters untouched, XOR learned and its loss
+falling monotonically, one hidden unit never reaching more than the perceptron's three of four
+rows, four hidden units succeeding from every seed tried, Glorot initialization limits with zero
+biases, parameter round trips, and the experiment's own parts and determinism. CTest covers the same C++ perceptron
 behavior, deterministic model parameters and histories, MLP convergence on every XOR example,
 all four linear-regression solvers, optimizer agreement, regression metrics and edge cases,
 logistic-regression convergence, numerical stability, threshold selection, classification

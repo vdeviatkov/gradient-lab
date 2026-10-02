@@ -26,6 +26,7 @@ plotting = ["matplotlib>=3.9"]
 
 [project.scripts]
 ml-perceptron-logic-gates = "ml_scratch.pure.perceptron_experiment:main"
+ml-xor-mlp = "ml_scratch.pure.xor_mlp_experiment:main"
 
 [tool.setuptools.packages.find]
 where = ["src/python"]

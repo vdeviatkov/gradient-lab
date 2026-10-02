@@ -1,7 +1,7 @@
 # Two-layer MLP mathematics for XOR
 
-A single affine boundary cannot represent XOR. The C++ MLP adds a hidden nonlinear layer with four
-units. For input $x = (x_1, x_2)$, the forward pass is
+A single affine boundary cannot represent XOR. The fix is a hidden nonlinear layer, implemented
+identically in pure Python and C++ with $h$ units. For input $x = (x_1, x_2)$, the forward pass is
 
 $$
 z_j = W^{(1)}_j x + b^{(1)}_j, \qquad
@@ -41,5 +41,42 @@ sample count, and performs one full-batch update per epoch.
 
 The convergence rule requires both perfect truth-table accuracy and binary cross-entropy at or
 below the configured target. This prevents a lucky threshold crossing from being reported as a
-well-trained model. Numerical gradient checking and a reusable layer-oriented backpropagation
-design are intentionally reserved for roadmap milestone 3.
+well-trained model.
+
+## Why the hidden layer must be wider than one unit
+
+A hidden layer is not enough on its own; it has to be wide enough to produce more than one
+boundary. With $h = 1$ the whole model is
+
+$$
+p = \sigma\big(w\,\tanh(a \cdot x + b) + c\big),
+$$
+
+and $\tanh$ is strictly increasing, as is $\sigma$. Their composition with a scalar multiply is
+therefore monotone in the single linear score $a \cdot x + b$, so the set $\{x : p \ge 1/2\}$ is a
+half-plane — the same hypothesis class the perceptron had, reached by a longer route. XOR is not
+in it. The pure-Python experiment measures the consequence: over fifty seeds a one-unit network
+never separates XOR, and most of its failures stop at three of the four rows, the perceptron's
+own ceiling.
+
+Two hidden units suffice in principle, since two half-planes can be combined into the XOR region,
+but full-batch descent reaches that solution from only some initializations. The failures all
+settle at the same place: a loss of $(\ln 2)/2$, with two rows predicted confidently and the other
+two left at probability $0.5000$ to four decimals. It is a plateau rather than an exact stationary
+point — the measured gradient norm there is about $2.4\times10^{-4}$ — but it is flat enough that
+ten thousand epochs do not leave it, and the two undecided rows contribute $\ln 2$ each, which is
+where the loss comes from. Four units reach the solution from every seed tried.
+
+## Checking the derivation
+
+Each gradient above is written out by hand, so something independent has to confirm it. Central
+differences do:
+
+$$
+\frac{\partial L}{\partial \theta_i} \approx \frac{L(\theta + \epsilon e_i) - L(\theta - \epsilon e_i)}{2\epsilon},
+$$
+
+which knows nothing about the chain rule and agrees with the analytic gradient to about $10^{-11}$
+at $\epsilon = 10^{-5}$. The [backpropagation milestone](backpropagation.md) turns this focused
+check into a general facility, including the step-size trade-off that decides how small $\epsilon$
+can usefully be.
