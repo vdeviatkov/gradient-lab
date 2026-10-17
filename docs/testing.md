@@ -12,19 +12,20 @@ ruff check .
 python scripts/check_docs.py
 ```
 
-`pytest` runs the model/experiment suite in `tests/python/` and development-tool tests in
-`tests/tooling/`. Ruff checks Python code. The documentation checker validates local Markdown
+`pytest` runs topic-local `python/tests/`, shared fixture/numerics tests in `tests/python/`,
+and development-tool tests in `tests/tooling/`. Ruff checks Python code. The documentation checker validates local Markdown
 file/directory links and Markdown heading anchors in tracked and non-ignored new documentation;
 it does not access the network or validate remote URLs.
 
 Run a focused check while developing:
 
 ```bash
-python -m pytest tests/python/test_logistic_regression.py
+python -m pytest topics/04_logistic_regression/python/tests/test_logistic_regression.py
 python -m pytest tests/tooling/test_check_docs.py
 ```
 
-The [Python test guide](../tests/python/README.md) maps the implemented topics to their tests.
+The [shared Python test guide](../tests/python/README.md) describes common fixtures; each topic’s
+Python README links its own model and experiment tests.
 
 ## C++
 
@@ -63,3 +64,6 @@ its exact assertions.
 The [CI workflow](../.github/workflows/ci.yml) runs Python tests, Ruff, documentation links, and a
 Release CMake build with CTest. Performance measurements belong in reproducible experiments;
 wall-clock training or benchmark results are not treated as portable CI expectations.
+
+Repository-layout tests enforce topic-local documentation and package ownership, detect copied
+algorithm sources, and verify that benchmark source accounting follows relocated files exactly once.

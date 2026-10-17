@@ -1,13 +1,20 @@
 # Tests
 
-[Quality-check commands](../docs/testing.md) · [Contributor guide](../CONTRIBUTING.md)
+[Quality-check commands](../docs/testing.md) · [Topic owners](../README.md#topics)
 
-| Suite | Runner | Guide |
-|---|---|---|
-| Pure-Python models and experiments | `python -m pytest tests/python` | [README](python/README.md) |
-| C++ algorithms and support utilities | `ctest --test-dir build --output-on-failure` | [README](cpp/README.md) |
-| Repository tooling | `python -m pytest tests/tooling` | [README](tooling/README.md) |
+Model and experiment tests live with their implementations under
+`topics/<topic>/<backend>/tests/`. Each implementation README links those tests.
+This directory contains only shared integration and repository-tool tests.
 
-Tests use small deterministic fixtures and need no downloaded datasets or accelerator hardware.
-Keep numerical checks independent of the implementation under test. Experimental performance
-measurements belong in the experiment READMEs, not hard-coded as general-purpose test claims.
+| Scope | Command / guide |
+|---|---|
+| All Python and tooling tests | `python -m pytest` after editable installation |
+| Topic Python tests | `python -m pytest topics/<topic>/python/tests` |
+| All C++ topic/integration tests | `ctest --test-dir build --output-on-failure` |
+| Shared C++ integration | [Guide](cpp/README.md) |
+| Shared Python fixtures | [Guide](python/README.md) |
+| Repository tooling | [Guide](tooling/README.md) |
+
+Tests use small deterministic fixtures and need no external datasets or GPU. Keep numerical
+expectations independent of the implementation. Performance claims belong to reproducible topic
+experiments, not portable CI expectations.

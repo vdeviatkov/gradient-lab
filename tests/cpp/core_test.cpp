@@ -1,3 +1,4 @@
+#include "ml_scratch/char_ngram.hpp"
 // Link this test against ml_scratch_cpp alone: training and inference must be usable
 // without any experiment utilities, checkpoint readers, or evaluation implementations.
 #include "ml_scratch/convolution.hpp"

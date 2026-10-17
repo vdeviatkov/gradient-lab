@@ -1,17 +1,17 @@
 # Contributing
 
 Start with [setup](docs/getting-started.md), the [repository layout](docs/design/repository-layout.md),
-and the [implementation status](docs/status.md). Follow the contributor requirements in
+and the [implementation status](README.md#topics). Follow the contributor requirements in
 [AGENTS.md](AGENTS.md).
 
 ## Make a focused change
 
 1. Choose an existing topic or the next milestone in the [roadmap](docs/roadmap.md).
-2. Put reusable algorithms in the appropriate implementation and orchestration in its experiment.
+2. Put algorithms, experiment orchestration, and tests in the topic’s backend folder.
 3. Explain mathematical and numerical decisions in the topic's derivation or design documentation.
 4. Add tests with implementations. Use deterministic seeds and independent mathematical expectations.
 5. Run the relevant tests and quality checks below.
-6. Update the topic README, implementation guide, status matrix, and root implementation summary
+6. Update the topic README and idea, implementation guide, and root status matrix
    when completing a milestone.
 
 Keep source paths and topic numbers stable where practical. Add documentation through the existing
@@ -45,6 +45,6 @@ large datasets, generated models, build outputs, credentials, and local environm
 
 ## Describe the result
 
-Use the [pull-request template](.github/pull_request_template.md). A pull request should explain the problem, resulting behavior, important design decisions, and
-validation. Include measured outcomes only when they were actually produced, with enough detail to
+Use the [pull-request template](.github/pull_request_template.md). Explain the problem, resulting
+behavior, important design decisions, and validation. Include measured outcomes only when they were actually produced, with enough detail to
 reproduce them. Mention relevant limitations and update links to the final implementation.

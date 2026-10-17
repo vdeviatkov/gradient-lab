@@ -25,23 +25,38 @@ pytorch = [
 plotting = ["matplotlib>=3.9"]
 
 [project.scripts]
-ml-perceptron-logic-gates = "ml_scratch.pure.perceptron_experiment:main"
-ml-xor-mlp = "ml_scratch.pure.xor_mlp_experiment:main"
-ml-linear-regression = "ml_scratch.pure.linear_regression_experiment:main"
-ml-logistic-regression = "ml_scratch.pure.logistic_regression_experiment:main"
+ml-perceptron-logic-gates = "ml_scratch.pure.perceptron.experiment:main"
+ml-xor-mlp = "ml_scratch.pure.mlp.experiment:main"
+ml-linear-regression = "ml_scratch.pure.linear_regression.experiment:main"
+ml-logistic-regression = "ml_scratch.pure.logistic_regression.experiment:main"
 
-[tool.setuptools.packages.find]
-where = ["src/python"]
+[tool.setuptools]
+packages = [
+  "ml_scratch",
+  "ml_scratch.pure",
+  "ml_scratch.pure.perceptron",
+  "ml_scratch.pure.mlp",
+  "ml_scratch.pure.linear_regression",
+  "ml_scratch.pure.logistic_regression",
+]
+
+[tool.setuptools.package-dir]
+"ml_scratch" = "shared/python/ml_scratch"
+"ml_scratch.pure" = "shared/python/ml_scratch/pure"
+"ml_scratch.pure.perceptron" = "topics/01_perceptron_logic_gates/python"
+"ml_scratch.pure.mlp" = "topics/02_xor_mlp/python"
+"ml_scratch.pure.linear_regression" = "topics/03_linear_regression/python"
+"ml_scratch.pure.logistic_regression" = "topics/04_logistic_regression/python"
 
 [tool.pytest.ini_options]
 addopts = "-ra"
-testpaths = ["tests/python", "tests/tooling"]
-pythonpath = ["src/python", "scripts"]
+testpaths = ["topics", "tests"]
+pythonpath = ["shared/python", "scripts"]
 
 [tool.ruff]
 target-version = "py311"
 line-length = 100
-src = ["src/python", "tests/python"]
+src = ["shared/python", "topics", "tests", "scripts"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]

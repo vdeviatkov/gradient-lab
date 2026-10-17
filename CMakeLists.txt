@@ -1,271 +1,55 @@
 cmake_minimum_required(VERSION 3.20)
+project(ml_from_scratch_cpp_python VERSION 0.1.0
+        DESCRIPTION "Educational machine-learning implementations from scratch" LANGUAGES CXX)
 
-project(
-    ml_from_scratch_cpp_python
-    VERSION 0.1.0
-    DESCRIPTION "Educational machine-learning implementations from scratch"
-    LANGUAGES CXX
-)
+# Keep the documented build/cpp_* executable paths stable across topic subdirectories.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+include(CTest)
 
-add_library(
-    ml_scratch_cpp STATIC
-    src/cpp/src/char_ngram.cpp
-    src/cpp/src/convolution.cpp
-    src/cpp/src/dataset.cpp
-    src/cpp/src/decision_tree.cpp
-    src/cpp/src/gan.cpp
-    src/cpp/src/gradient.cpp
-    src/cpp/src/kmeans.cpp
-    src/cpp/src/linear_regression.cpp
-    src/cpp/src/logistic_regression.cpp
-    src/cpp/src/neural_network.cpp
-    src/cpp/src/optimizer.cpp
-    src/cpp/src/pca.cpp
-    src/cpp/src/perceptron.cpp
-    src/cpp/src/reinforcement.cpp
-    src/cpp/src/rnn.cpp
-    src/cpp/src/snake.cpp
-    src/cpp/src/softmax_regression.cpp
-    src/cpp/src/transformer.cpp
-    src/cpp/src/xor_mlp.cpp
-)
-
-target_include_directories(
-    ml_scratch_cpp
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/cpp/include>
-)
-target_compile_features(ml_scratch_cpp PUBLIC cxx_std_20)
-
-function(enable_project_warnings target_name)
+function(enable_project_warnings target)
     if(MSVC)
-        target_compile_options(${target_name} PRIVATE /W4 /permissive-)
+        target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
-        target_compile_options(${target_name} PRIVATE -Wall -Wextra -Wpedantic)
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
     endif()
 endfunction()
 
+function(add_ml_test name source library)
+    add_executable(${name} ${source})
+    target_link_libraries(${name} PRIVATE ${library})
+    enable_project_warnings(${name})
+    add_test(NAME ${name} COMMAND ${name})
+endfunction()
+
+# Shared infrastructure is independent of any one learning milestone.
+add_library(ml_scratch_cpp STATIC
+    shared/cpp/src/dataset.cpp
+    shared/cpp/src/gradient.cpp
+)
+target_include_directories(ml_scratch_cpp PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/shared/cpp/include>")
+target_compile_features(ml_scratch_cpp PUBLIC cxx_std_20)
 enable_project_warnings(ml_scratch_cpp)
 
-# Experiment support depends on the algorithms; the core never links support code.
-add_library(
-    ml_scratch_utils STATIC
-    src/cpp/utils/benchmark.cpp
-    src/cpp/utils/cifar10.cpp
-    src/cpp/utils/classification_metrics.cpp
-    src/cpp/utils/convolution_checkpoint.cpp
-    src/cpp/utils/dataset.cpp
-    src/cpp/utils/deterministic_random.cpp
-    src/cpp/utils/evaluation.cpp
-    src/cpp/utils/gan_checkpoint.cpp
-    src/cpp/utils/gradient_check.cpp
-    src/cpp/utils/logic_gates.cpp
-    src/cpp/utils/mnist.cpp
-    src/cpp/utils/neural_network_checkpoint.cpp
-    src/cpp/utils/project_info.cpp
-    src/cpp/utils/regression.cpp
-    src/cpp/utils/reinforcement_checkpoint.cpp
-    src/cpp/utils/reporting.cpp
-    src/cpp/utils/rnn_diagnostics.cpp
-    src/cpp/utils/tree_diagnostics.cpp
-    src/cpp/utils/transformer_diagnostics.cpp
-    src/cpp/utils/rnn_checkpoint.cpp
-    src/cpp/utils/snake_render.cpp
-    src/cpp/utils/text_corpus.cpp
-    src/cpp/utils/transformer_checkpoint.cpp
+# Support may depend on models; model training/inference must not depend on support.
+add_library(ml_scratch_utils STATIC
+    shared/cpp/utils/cifar10.cpp
+    shared/cpp/utils/classification_metrics.cpp
+    shared/cpp/utils/dataset.cpp
+    shared/cpp/utils/deterministic_random.cpp
+    shared/cpp/utils/mnist.cpp
+    shared/cpp/utils/project_info.cpp
+    shared/cpp/utils/text_corpus.cpp
 )
 target_link_libraries(ml_scratch_utils PUBLIC ml_scratch_cpp)
 enable_project_warnings(ml_scratch_utils)
-target_include_directories(ml_scratch_cpp PRIVATE src/cpp/internal)
-target_include_directories(ml_scratch_utils PRIVATE src/cpp/internal)
 
-add_executable(cpp_perceptron_logic_gates experiments/01_perceptron_logic_gates/cpp_main.cpp)
-target_link_libraries(cpp_perceptron_logic_gates PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_perceptron_logic_gates)
+add_subdirectory(topics)
 
-add_executable(cpp_xor_mlp experiments/02_xor_mlp/cpp_main.cpp)
-target_link_libraries(cpp_xor_mlp PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_xor_mlp)
-
-add_executable(cpp_linear_regression experiments/03_linear_regression/cpp_main.cpp)
-target_link_libraries(cpp_linear_regression PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_linear_regression)
-
-add_executable(cpp_logistic_regression experiments/04_logistic_regression/cpp_main.cpp)
-target_link_libraries(cpp_logistic_regression PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_logistic_regression)
-
-add_executable(cpp_pca_kmeans experiments/05_pca_kmeans/cpp_main.cpp)
-target_link_libraries(cpp_pca_kmeans PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_pca_kmeans)
-
-add_executable(cpp_decision_tree experiments/06_decision_tree/cpp_main.cpp)
-target_link_libraries(cpp_decision_tree PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_decision_tree)
-
-add_executable(cpp_backpropagation experiments/07_backpropagation/cpp_main.cpp)
-target_link_libraries(cpp_backpropagation PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_backpropagation)
-
-add_executable(cpp_softmax_mnist experiments/08_softmax_mnist/cpp_main.cpp)
-target_link_libraries(cpp_softmax_mnist PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_softmax_mnist)
-
-add_executable(cpp_mlp_mnist experiments/09_mlp_mnist/cpp_main.cpp)
-target_link_libraries(cpp_mlp_mnist PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_mlp_mnist)
-
-add_executable(cpp_optimizers experiments/10_optimizers/cpp_main.cpp)
-target_link_libraries(cpp_optimizers PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_optimizers)
-
-add_executable(cpp_regularization experiments/11_regularization/cpp_main.cpp)
-target_link_libraries(cpp_regularization PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_regularization)
-
-add_executable(cpp_cnn_mnist experiments/12_cnn_mnist/cpp_main.cpp)
-target_link_libraries(cpp_cnn_mnist PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_cnn_mnist)
-
-add_executable(cpp_resnet_cifar10 experiments/13_residual/cpp_main.cpp)
-target_link_libraries(cpp_resnet_cifar10 PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_resnet_cifar10)
-
-add_executable(cpp_cgan_mnist experiments/14_cgan_mnist/cpp_main.cpp)
-target_link_libraries(cpp_cgan_mnist PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_cgan_mnist)
-
-add_executable(cpp_char_rnn experiments/15_char_rnn/cpp_main.cpp)
-target_link_libraries(cpp_char_rnn PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_char_rnn)
-
-add_executable(cpp_lstm_gru experiments/16_lstm_gru/cpp_main.cpp)
-target_link_libraries(cpp_lstm_gru PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_lstm_gru)
-
-add_executable(cpp_transformer experiments/17_transformer/cpp_main.cpp)
-target_link_libraries(cpp_transformer PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_transformer)
-
-add_executable(cpp_snake_rl experiments/18_snake_rl/cpp_main.cpp)
-target_link_libraries(cpp_snake_rl PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_snake_rl)
-
-add_executable(cpp_benchmarks experiments/19_benchmarks/cpp_main.cpp)
-target_link_libraries(cpp_benchmarks PRIVATE ml_scratch_utils)
-enable_project_warnings(cpp_benchmarks)
-
-include(CTest)
 if(BUILD_TESTING)
-    # This executable intentionally links only the core. It catches dependencies from
-    # training/inference back into checkpoint, evaluation, or experiment support code.
-    add_executable(cpp_core_test tests/cpp/core_test.cpp)
-    target_link_libraries(cpp_core_test PRIVATE ml_scratch_cpp)
-    enable_project_warnings(cpp_core_test)
-    add_test(NAME cpp_core_test COMMAND cpp_core_test)
-
-    add_executable(cpp_utilities_test tests/cpp/utilities_test.cpp)
-    target_link_libraries(cpp_utilities_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_utilities_test)
-    add_test(NAME cpp_utilities_test COMMAND cpp_utilities_test)
-
-    add_executable(cpp_smoke_test tests/cpp/smoke_test.cpp)
-    target_link_libraries(cpp_smoke_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_smoke_test)
-    add_test(NAME cpp_smoke_test COMMAND cpp_smoke_test)
-
-    add_executable(cpp_logic_models_test tests/cpp/logic_models_test.cpp)
-    target_link_libraries(cpp_logic_models_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_logic_models_test)
-    add_test(NAME cpp_logic_models_test COMMAND cpp_logic_models_test)
-
-    add_executable(cpp_linear_regression_test tests/cpp/linear_regression_test.cpp)
-    target_link_libraries(cpp_linear_regression_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_linear_regression_test)
-    add_test(NAME cpp_linear_regression_test COMMAND cpp_linear_regression_test)
-
-    add_executable(cpp_logistic_regression_test tests/cpp/logistic_regression_test.cpp)
-    target_link_libraries(cpp_logistic_regression_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_logistic_regression_test)
-    add_test(NAME cpp_logistic_regression_test COMMAND cpp_logistic_regression_test)
-
-    add_executable(cpp_pca_test tests/cpp/pca_test.cpp)
-    target_link_libraries(cpp_pca_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_pca_test)
-    add_test(NAME cpp_pca_test COMMAND cpp_pca_test)
-
-    add_executable(cpp_kmeans_test tests/cpp/kmeans_test.cpp)
-    target_link_libraries(cpp_kmeans_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_kmeans_test)
-    add_test(NAME cpp_kmeans_test COMMAND cpp_kmeans_test)
-
-    add_executable(cpp_decision_tree_test tests/cpp/decision_tree_test.cpp)
-    target_link_libraries(cpp_decision_tree_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_decision_tree_test)
-    add_test(NAME cpp_decision_tree_test COMMAND cpp_decision_tree_test)
-
-    add_executable(cpp_neural_network_test tests/cpp/neural_network_test.cpp)
-    target_link_libraries(cpp_neural_network_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_neural_network_test)
-    add_test(NAME cpp_neural_network_test COMMAND cpp_neural_network_test)
-
-    add_executable(cpp_residual_test tests/cpp/residual_test.cpp)
-    target_link_libraries(cpp_residual_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_residual_test)
-    add_test(NAME cpp_residual_test COMMAND cpp_residual_test)
-
-    add_executable(cpp_convolution_test tests/cpp/convolution_test.cpp)
-    target_link_libraries(cpp_convolution_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_convolution_test)
-    add_test(NAME cpp_convolution_test COMMAND cpp_convolution_test)
-
-    add_executable(cpp_regularization_test tests/cpp/regularization_test.cpp)
-    target_link_libraries(cpp_regularization_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_regularization_test)
-    add_test(NAME cpp_regularization_test COMMAND cpp_regularization_test)
-
-    add_executable(cpp_optimizer_test tests/cpp/optimizer_test.cpp)
-    target_link_libraries(cpp_optimizer_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_optimizer_test)
-    add_test(NAME cpp_optimizer_test COMMAND cpp_optimizer_test)
-
-    add_executable(cpp_softmax_regression_test tests/cpp/softmax_regression_test.cpp)
-    target_link_libraries(cpp_softmax_regression_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_softmax_regression_test)
-    add_test(NAME cpp_softmax_regression_test COMMAND cpp_softmax_regression_test)
-
-    add_executable(cpp_gan_test tests/cpp/gan_test.cpp)
-    target_link_libraries(cpp_gan_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_gan_test)
-    add_test(NAME cpp_gan_test COMMAND cpp_gan_test)
-
-    add_executable(cpp_text_corpus_test tests/cpp/text_corpus_test.cpp)
-    target_link_libraries(cpp_text_corpus_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_text_corpus_test)
-    add_test(NAME cpp_text_corpus_test COMMAND cpp_text_corpus_test)
-
-    add_executable(cpp_rnn_test tests/cpp/rnn_test.cpp)
-    target_link_libraries(cpp_rnn_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_rnn_test)
-    add_test(NAME cpp_rnn_test COMMAND cpp_rnn_test)
-
-    add_executable(cpp_transformer_test tests/cpp/transformer_test.cpp)
-    target_link_libraries(cpp_transformer_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_transformer_test)
-    add_test(NAME cpp_transformer_test COMMAND cpp_transformer_test)
-
-    add_executable(cpp_snake_test tests/cpp/snake_test.cpp)
-    target_link_libraries(cpp_snake_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_snake_test)
-    add_test(NAME cpp_snake_test COMMAND cpp_snake_test)
-
-    add_executable(cpp_reinforcement_test tests/cpp/reinforcement_test.cpp)
-    target_link_libraries(cpp_reinforcement_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_reinforcement_test)
-    add_test(NAME cpp_reinforcement_test COMMAND cpp_reinforcement_test)
-
-    add_executable(cpp_benchmark_test tests/cpp/benchmark_test.cpp)
-    target_link_libraries(cpp_benchmark_test PRIVATE ml_scratch_utils)
-    enable_project_warnings(cpp_benchmark_test)
-    add_test(NAME cpp_benchmark_test COMMAND cpp_benchmark_test)
+    add_ml_test(cpp_numerics_test tests/cpp/numerics_test.cpp ml_scratch_cpp)
+    add_ml_test(cpp_core_test tests/cpp/core_test.cpp ml_scratch_cpp)
+    add_ml_test(cpp_utilities_test tests/cpp/utilities_test.cpp ml_scratch_utils)
+    add_ml_test(cpp_smoke_test tests/cpp/smoke_test.cpp ml_scratch_utils)
+    add_ml_test(cpp_text_corpus_test tests/cpp/text_corpus_test.cpp ml_scratch_utils)
 endif()

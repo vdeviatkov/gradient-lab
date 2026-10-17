@@ -1,19 +1,11 @@
-# Python tests
+# Shared Python tests
 
-[All tests](../README.md) · [Pure-Python implementation](../../src/python/ml_scratch/pure/README.md)
+[All tests](../README.md) · [Python conventions](../../docs/implementations/pure-python.md)
 
-```bash
-python -m pytest tests/python
-```
+[Dataset tests](test_datasets.py) cover the shared immutable logic-gate fixtures.
+[Numerical primitive tests](test_numerics.py) cover the common sigmoid and softplus functions. Model and
+experiment tests live in their owning topic's `python/tests/` directory, linked from the
+[root topic table](../../README.md#topics).
 
-| Topic | Model tests | Experiment tests |
-|---|---|---|
-| Perceptron and datasets | [Perceptron](test_perceptron.py), [datasets](test_datasets.py) | [Runner](test_perceptron_experiment.py) |
-| XOR MLP | [Model](test_xor_mlp.py) | [Runner](test_xor_mlp_experiment.py) |
-| Linear regression | [Model](test_linear_regression.py) | [Runner](test_linear_regression_experiment.py) |
-| Binary logistic regression | [Model](test_logistic_regression.py) | [Runner](test_logistic_regression_experiment.py) |
-
-Coverage includes hand-computed predictions and metrics, gradients against central differences,
-training and non-convergence, stability and conditioning, malformed inputs, seeded reproducibility,
-and each experiment's verification criteria. Pytest's source path configuration is maintained in
-[pyproject.toml](../../pyproject.toml).
+Run the complete suite with `python -m pytest` after an editable installation. Running only
+`python -m pytest tests/python` checks common fixtures, not all topic models.

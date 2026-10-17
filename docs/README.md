@@ -1,20 +1,17 @@
 # Documentation
 
-[Project home](../README.md) · [Implementation status](status.md)
+[Project and topic/status matrix](../README.md#topics)
 
-| Start here | What it covers |
+| Guide | Responsibility |
 |---|---|
-| [Getting started](getting-started.md) | Python setup, C++ build, datasets, and first experiments |
-| [Topic catalog](../experiments/README.md) | All 19 topics, executables, and data requirements |
-| [Implementations](../src/README.md) | Python, C++, and planned backends |
-| [Mathematics](mathematics/README.md) | Derivations, design choices, and algorithm limitations |
-| [Design](design/README.md) | Repository boundaries and reproducibility contracts |
-| [Testing](testing.md) | Checks, targeted tests, and coverage expectations |
-| [Experiment findings](findings.md) | Detailed observations from recorded runs |
-| [Roadmap](roadmap.md) | Learning progression and milestone completion criteria |
-| [Contributing](../CONTRIBUTING.md) | Development workflow and change requirements |
-| [Results policy](../results/README.md) | What may be reported and how to reproduce it |
+| [Getting started](getting-started.md) | Setup, first runs, and datasets |
+| [Implementation conventions](implementations/README.md) | Language/toolchain setup and shared API conventions |
+| [Repository design](design/README.md) | Source ownership, library boundaries, reproducibility |
+| [Testing](testing.md) | Quality checks and focused test commands |
+| [Milestone requirements](roadmap.md) | Completion criteria and comparison requirements |
+| [Contributing](../CONTRIBUTING.md) | Change workflow |
+| [Results policy](../results/README.md) | Reproducible measurements and generated artifacts |
 
-Models belong in implementations, orchestration belongs in experiments, mathematical explanations
-belong in topic documentation, and measured outputs belong in results. Keep these boundaries when
-adding the next milestone.
+Each topic's `README.md` is the only report for its experiment, and its `idea.md` is the only
+mathematical explanation. Implementation notes and tests sit beside their code. Use the root table
+to reach these documents; there are no parallel experiment or mathematics catalogs to maintain.

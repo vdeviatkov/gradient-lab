@@ -1,3 +1,4 @@
+#include "ml_scratch/char_ngram.hpp"
 #include "ml_scratch/text_corpus.hpp"
 
 #include <cmath>
@@ -35,10 +36,12 @@ void require_invalid_argument(Function function, const std::string_view message)
 void test_vocabulary_and_round_trip() {
     const auto corpus = ml_scratch::build_text_corpus("hello world! hello again.", 0.2, 0.2);
     // Sorted distinct characters, by byte value: space and punctuation before letters.
-    require(corpus.vocabulary == " !.adeghilnorw", "the vocabulary should be the sorted distinct characters");
+    require(corpus.vocabulary == " !.adeghilnorw",
+            "the vocabulary should be the sorted distinct characters");
     require(corpus.vocabulary_size() == 14, "vocabulary size");
     require(corpus.encode('h') == 7 && corpus.encode(' ') == 0, "ids index the vocabulary");
-    require(corpus.decode(corpus.encode("hello")) == "hello", "encode and decode should round-trip");
+    require(corpus.decode(corpus.encode("hello")) == "hello",
+            "encode and decode should round-trip");
     require_invalid_argument([&] { static_cast<void>(corpus.encode('z')); },
                              "a character outside the vocabulary should be rejected");
     require_invalid_argument([&] { static_cast<void>(corpus.decode({99})); },
@@ -55,12 +58,15 @@ void test_splits_are_contiguous_and_in_order() {
                 corpus.decode(corpus.validation) == "nopqr" && corpus.decode(corpus.test) == "st",
             "splits should be contiguous slices in text order");
 
-    require_invalid_argument([&] { static_cast<void>(ml_scratch::build_text_corpus("", 0.1, 0.1)); },
-                             "empty text should be rejected");
-    require_invalid_argument([&] { static_cast<void>(ml_scratch::build_text_corpus(text, 0.5, 0.5)); },
-                             "fractions that leave no training text should be rejected");
-    require_invalid_argument([&] { static_cast<void>(ml_scratch::build_text_corpus("ab", 0.1, 0.1)); },
-                             "text too short for a split should be rejected");
+    require_invalid_argument(
+        [&] { static_cast<void>(ml_scratch::build_text_corpus("", 0.1, 0.1)); },
+        "empty text should be rejected");
+    require_invalid_argument(
+        [&] { static_cast<void>(ml_scratch::build_text_corpus(text, 0.5, 0.5)); },
+        "fractions that leave no training text should be rejected");
+    require_invalid_argument(
+        [&] { static_cast<void>(ml_scratch::build_text_corpus("ab", 0.1, 0.1)); },
+        "text too short for a split should be rejected");
 }
 
 void test_loading_a_file_with_a_prefix() {
@@ -97,7 +103,8 @@ void test_ngram_probabilities_by_hand() {
     unigram.fit(ids);
     // Counts: id 0 three times, id 1 four times, id 2 never; alpha 1 over 3 ids.
     require_near(unigram.probability({}, 0), (3.0 + 1.0) / (7.0 + 3.0), 1e-15, "unigram P(0)");
-    require_near(unigram.probability({}, 2), 1.0 / 10.0, 1e-15, "unigram smoothing gives unseen ids mass");
+    require_near(unigram.probability({}, 2), 1.0 / 10.0, 1e-15,
+                 "unigram smoothing gives unseen ids mass");
     double expected = 0.0;
     for (std::size_t position = 1; position < ids.size(); ++position) {
         expected -= std::log(unigram.probability({}, ids[position])) / 6.0;
@@ -127,12 +134,14 @@ void test_ngram_probabilities_by_hand() {
     require(sharp.cross_entropy(periodic) < 0.05 && flat.cross_entropy(periodic) > 1.0,
             "a bigram model should capture a period-3 pattern that a unigram cannot");
 
-    require_invalid_argument([] { ml_scratch::CharNgram bad{0, 3}; }, "order zero should be rejected");
+    require_invalid_argument([] { ml_scratch::CharNgram bad{0, 3}; },
+                             "order zero should be rejected");
     require_invalid_argument([] { ml_scratch::CharNgram bad{2, 3, 0.0}; },
                              "a zero pseudo-count should be rejected");
     require_invalid_argument([&] { static_cast<void>(unigram.cross_entropy({0})); },
                              "cross-entropy needs a prediction");
-    require_invalid_argument([&] { unigram.fit({0, 7}); }, "ids outside the vocabulary are rejected");
+    require_invalid_argument([&] { unigram.fit({0, 7}); },
+                             "ids outside the vocabulary are rejected");
 
     require_near(ml_scratch::perplexity(std::log(4.0)), 4.0, 1e-12,
                  "perplexity is the exponential of the cross-entropy");

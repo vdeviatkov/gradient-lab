@@ -1,6 +1,6 @@
 # Getting started
 
-[Documentation](README.md) · [All experiments](../experiments/README.md)
+[Documentation](README.md) · [All experiments](../README.md#topics)
 
 Run commands from the repository root unless a topic README says otherwise.
 
@@ -12,20 +12,20 @@ Requires Python 3.11 or newer. The pure-Python models use only the standard libr
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
-python -m ml_scratch.pure.perceptron_experiment
-python -m ml_scratch.pure.xor_mlp_experiment
-python -m ml_scratch.pure.linear_regression_experiment
-python -m ml_scratch.pure.logistic_regression_experiment
+python -m ml_scratch.pure.perceptron.experiment
+python -m ml_scratch.pure.mlp.experiment
+python -m ml_scratch.pure.linear_regression.experiment
+python -m ml_scratch.pure.logistic_regression.experiment
 ```
 
-Installed command equivalents and the model/source map are in the
-[pure-Python guide](../src/python/ml_scratch/pure/README.md). The experiment `run.py` wrappers also
-work after the editable installation. Use each command’s `--help` to inspect its options.
+Each topic's Python README links its source and documents the module and installed CLI commands.
+See the [pure-Python conventions](implementations/pure-python.md) for the package layout.
+Use each command's `--help` to inspect its options.
 
 Optional dependencies are available with `python -m pip install -e ".[numpy]"`,
 `python -m pip install -e ".[pytorch]"`, and `python -m pip install -e ".[plotting]"`.
 These extras do not imply that the corresponding model implementations are complete; check
-[implementation status](status.md).
+[implementation status](../README.md#topics).
 
 ## C++
 
@@ -41,7 +41,7 @@ ctest --test-dir build --output-on-failure
 
 For a multi-configuration generator, add `--config Release` to the build command and
 `--build-config Release` to CTest; executable locations follow the generator’s configuration
-layout. See the [C++ guide](../src/cpp/README.md) for library boundaries and source locations.
+layout. See the [C++ guide](implementations/cpp.md) for library boundaries and source locations.
 
 ## Datasets
 

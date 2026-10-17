@@ -1,53 +1,56 @@
-# Repository layout
+# Topic ownership and repository layout
 
-[Design guides](README.md) · [Implementations](../../src/README.md)
+[Design guides](README.md) · [Canonical topic/status matrix](../../README.md#topics)
 
 ```text
-.
-├── .github/           # Continuous integration and pull-request template
-├── docs/              # Setup, status, roadmap, findings, mathematics, and design
-├── experiments/       # Numbered topic READMEs and runnable experiment drivers
-├── results/           # Measurement policy and ignored generated output directories
-├── scripts/           # Dataset downloads, build measurement, and documentation checks
-├── src/
-│   ├── cpp/           # C++ interfaces, core algorithms, utilities, and private declarations
-│   ├── python/        # Installable ml_scratch package and backend guides
-│   └── triton/        # Planned GPU-kernel implementation guide
-├── tests/
-│   ├── cpp/           # CTest executables and small fixtures
-│   ├── python/        # Pure-Python model and experiment tests
-│   └── tooling/       # Repository-tool tests
-├── AGENTS.md          # Agent/contributor requirements
-├── CMakeLists.txt     # C++ library, experiment, and test targets
-├── CONTRIBUTING.md    # Contributor workflow
-├── LICENSE
-├── pyproject.toml     # Python package, optional dependencies, CLIs, and quality tools
-└── README.md          # Concise project entry point and topic links
+topics/<number>_<topic>/
+  README.md                     # Experiment method, configuration, results, limitations
+  idea.md                       # Mathematical explanation and design decisions
+  cpp/
+    README.md                   # Source map and C++ implementation notes
+    CMakeLists.txt              # Topic source, executable, and test registration
+    main.cpp                    # Experiment driver
+    <model>.cpp                 # Algorithm, if this topic owns one
+    include/ml_scratch/         # Public interfaces, if owned here
+    utils/                      # Topic-specific evaluation, persistence, diagnostics
+    tests/                      # Topic-specific CTest executables
+  python/                       # Present when the Python implementation exists
+    README.md
+    __init__.py                 # Public API exports only
+    model.py                    # Canonical algorithm
+    experiment.py               # Experiment orchestration and installed CLI
+    tests/
+shared/                         # Common infrastructure used by multiple topics
+docs/                           # Setup, backend conventions, design, contribution guidance
+tests/                          # Cross-topic integration and repository-tool checks
+scripts/                        # Data downloads, measurement tooling, documentation checks
+results/                        # Generated-output policy; measurements remain ignored
 ```
 
-## Ownership
+## One owner per piece of code or information
 
-| Kind of content | Location | Rule |
-|---|---|---|
-| Model algorithm | `src/<implementation>/` | Forward passes, objectives, gradients, and updates stay explicit |
-| Experiment | `experiments/<number>_<topic>/` | Own datasets, splits, selection, configuration, and reporting |
-| Topic guide | Experiment `README.md` | Link the derivation and implementation; document the runnable experiment |
-| Mathematical derivation | `docs/mathematics/` | Explain equations, numerical conventions, and limitations |
-| Implementation guide | Implementation `README.md` | Map source modules and describe setup and boundaries |
-| Tests | `tests/<implementation>/` | Test independent expectations, edge cases, and reproducibility |
-| Tooling | `scripts/`, `tests/tooling/` | Keep development helpers separate from model packages |
-| Measured output | `results/` | Record command, configuration, seed, environment, and method |
-| Downloaded/generated files | Ignored local directories | Keep datasets, models, environments, and build products out of Git |
+- A topic's `idea.md` owns its mathematics. Link it from every backend instead of copying it.
+- A topic's `README.md` owns its experiment report and measured results. There is no separate
+  findings document or parallel experiment folder.
+- An implementation lives in that topic's backend folder, including its tests and driver.
+- A later topic reusing a model links its owning topic. For example, the MNIST MLP and
+  regularization topics use the dense network in topic 07; LSTM/GRU uses the recurrent model in
+  topic 15. No model copy is created just to fill a folder.
+- Truly common operations live under `shared/`; do not move a model there merely because a later
+  topic calls it. The [shared README](../../shared/README.md) defines the infrastructure boundary.
+- The root topic table is the single catalog and implementation-status matrix. Language guides
+  describe conventions rather than repeating the catalog.
+- Planned backends gain a local directory with their implementation, not a collection of empty
+  placeholder code or copied READMEs.
 
-Topic numbers are stable across implementations. Reuse an existing topic's model when a later
-experiment extends it; shared source is linked from each relevant README. A planned implementation
-has an explicit status page instead of placeholder model classes.
+The topic sequence is stable. Each C++ folder registers itself with the root build, and Python's
+explicit package map installs topic-local packages without mirroring source into another tree.
+Existing model include names, Python model imports, installed CLI names, and `build/cpp_*`
+executables are retained. The n-gram baseline now has its own `ml_scratch/char_ngram.hpp` header
+in topic 15 rather than being declared in the shared corpus header. Experiment module paths now use `ml_scratch.pure.<model>.experiment`.
 
-## Local directories
+## Local artifacts
 
-`build/`, `build-*/`, `cmake-build-*/`, `.venv/`, caches, IDE state, `data/`, and generated artifacts
-are ignored. They may exist in a working checkout without being part of the published repository.
-The layout above describes maintained source and documentation, not local execution state.
-
-The full milestone matrix lives in [status](../status.md). Keep the root README's implementation
-summary current, and place detailed findings in topic READMEs or the [findings guide](../findings.md).
+`build/`, `build-*/`, `cmake-build-*/`, `.venv/`, caches, IDE state, `data/`, and generated output
+remain local and ignored. They are not part of the maintained source layout. The package/build
+configuration remains at the root, with [contributor guidance](../../CONTRIBUTING.md) and the license.

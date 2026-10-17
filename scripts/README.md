@@ -1,7 +1,7 @@
 # Scripts
 
 [Setup](../docs/getting-started.md) · [Testing](../docs/testing.md) ·
-[Experiments](../experiments/README.md)
+[Experiments](../README.md#topics)
 
 Run these commands from the repository root. Download scripts use Bash and `curl`; decompression
 also requires `gunzip` for MNIST and `tar` for CIFAR-10.
@@ -17,7 +17,7 @@ also requires `gunzip` for MNIST and `tar` for CIFAR-10.
 `benchmark_build.sh` removes and recreates its build directory and removes it again after timing;
 use a dedicated directory, not an existing development build. It also requires `bc` and a `date`
 implementation supporting nanosecond timestamps. See
-[experiment 19](../experiments/19_benchmarks/README.md) for measurement methodology.
+[experiment 19](../topics/19_benchmarks/README.md) for measurement methodology.
 
 The documentation checker uses Python 3.11+ and Git, with no runtime dependency or network access:
 
