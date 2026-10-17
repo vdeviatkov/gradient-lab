@@ -41,7 +41,5 @@ data/
 *.pt
 *.pth
 *.onnx
-results/figures/*
-!results/figures/README.md
-results/benchmarks/*
-!results/benchmarks/README.md
+/results/figures/
+/results/benchmarks/

@@ -12,7 +12,7 @@ also requires `gunzip` for MNIST and `tar` for CIFAR-10.
 | [download_cifar10.sh](download_cifar10.sh) | Binary batches in `data/cifar10/` | First argument: directory; `CIFAR10_URL`: archive URL |
 | [download_tiny_shakespeare.sh](download_tiny_shakespeare.sh) | `data/tiny_shakespeare/input.txt` | First argument: directory; `TINY_SHAKESPEARE_URL`: corpus URL |
 | [benchmark_build.sh](benchmark_build.sh) | Measures a clean Release build into `results/benchmarks/cpp_build.json` | First argument: temporary build directory; `ML_SCRATCH_BENCHMARK_DIR`, `ML_SCRATCH_BUILD_JOBS` |
-| [check_docs.py](check_docs.py) | Checks repository-local Markdown destinations and heading anchors | `--root`: repository checkout to inspect |
+| [check_docs.py](check_docs.py) | Checks local Markdown destinations, heading anchors, and navigation reachability | `--root`: repository checkout to inspect |
 
 `benchmark_build.sh` removes and recreates its build directory and removes it again after timing;
 use a dedicated directory, not an existing development build. It also requires `bc` and a `date`

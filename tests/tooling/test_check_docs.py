@@ -63,3 +63,27 @@ def test_cli_uses_git_inventory_and_ignores_local_artifacts(tmp_path, capsys):
     source.write_text("[broken](missing.md)\n")
     assert main(["--root", str(tmp_path)]) == 1
     assert "README.md:1" in capsys.readouterr().out
+
+
+def test_navigation_detects_orphans_and_follows_directory_readmes(tmp_path):
+    from check_docs import orphaned_markdown
+
+    home = tmp_path / "README.md"
+    guide = tmp_path / "docs/README.md"
+    extra = tmp_path / "docs/extra.md"
+    guide.parent.mkdir()
+    home.write_text("[Guide](docs/)\n")
+    guide.write_text("# Guide\n")
+    extra.write_text("# Hidden guide\n")
+    files = [home, guide, extra]
+    assert orphaned_markdown(files, tmp_path) == [extra]
+    guide.write_text("[Details](extra.md#hidden-guide)\n")
+    assert orphaned_markdown(files, tmp_path) == []
+
+
+def test_cli_rejects_a_valid_but_unlinked_document(tmp_path, capsys):
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / "README.md").write_text("# Home\n")
+    (tmp_path / "unused.md").write_text("# Unused\n")
+    assert main(["--root", str(tmp_path)]) == 1
+    assert "unused.md: not reachable from README.md" in capsys.readouterr().out

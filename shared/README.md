@@ -1,6 +1,6 @@
 # Shared infrastructure
 
-[Repository layout](../docs/design/repository-layout.md) · [Topics](../README.md#topics)
+[Repository layout](../docs/architecture.md) · [Topics](../README.md#topics)
 
 Only code used across topics belongs here. Algorithms stay in their owning topic, even when a
 later topic reuses them.

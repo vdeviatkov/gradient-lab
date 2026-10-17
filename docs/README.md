@@ -1,17 +1,20 @@
 # Documentation
 
-[Project and topic/status matrix](../README.md#topics)
+[Topics, ideas, implementations, and status](../README.md#topics)
 
-| Guide | Responsibility |
-|---|---|
-| [Getting started](getting-started.md) | Setup, first runs, and datasets |
-| [Implementation conventions](implementations/README.md) | Language/toolchain setup and shared API conventions |
-| [Repository design](design/README.md) | Source ownership, library boundaries, reproducibility |
-| [Testing](testing.md) | Quality checks and focused test commands |
-| [Milestone requirements](roadmap.md) | Completion criteria and comparison requirements |
-| [Contributing](../CONTRIBUTING.md) | Change workflow |
-| [Results policy](../results/README.md) | Reproducible measurements and generated artifacts |
+## Start here
 
-Each topic's `README.md` is the only report for its experiment, and its `idea.md` is the only
-mathematical explanation. Implementation notes and tests sit beside their code. Use the root table
-to reach these documents; there are no parallel experiment or mathematics catalogs to maintain.
+- [Setup](getting-started.md): prerequisites, installation, datasets, and first runs.
+- [Testing](testing.md): full and focused quality checks.
+- [Contributing](../CONTRIBUTING.md): workflow and milestone requirements.
+- [Results policy](../results/README.md): how to report and retain measured outputs.
+
+## Architecture
+
+- [Repository ownership](architecture.md): topic layout and one canonical owner per item.
+- [Reproducibility](reproducibility.md): seeds, equivalence, and measurement contracts.
+- [Backend conventions](implementations/README.md): C++, Python, and planned backend scope.
+
+Topic mathematics belongs only in `topics/<topic>/idea.md`, the experiment report in its
+`README.md`, and implementation-specific notes beside the code. The root table is the only topic
+catalog and completion matrix.

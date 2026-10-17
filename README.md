@@ -25,7 +25,7 @@ Topic READMEs contain the experiment and results; **Idea** links explain the alg
 Implementation links open the topic's source/test guide. **Planned** means unimplemented;
 **—** means a standalone implementation is not applicable. This is the canonical status matrix.
 
-| # | Topic | Idea | [C++](docs/implementations/cpp.md) | [Python](docs/implementations/pure-python.md) | [NumPy](docs/implementations/numpy.md) | [PyTorch](docs/implementations/pytorch.md) | [JAX](docs/implementations/jax.md) | [Triton](docs/implementations/triton.md) |
+| # | Topic | Idea | [C++](docs/implementations/cpp.md) | [Python](docs/implementations/pure-python.md) | [NumPy](docs/implementations/README.md#numpy) | [PyTorch](docs/implementations/README.md#pytorch) | [JAX](docs/implementations/README.md#jax) | [Triton](docs/implementations/README.md#triton) |
 |---:|---|---|---|---|---|---|---|---|
 | 01 | [Perceptron and logic gates](topics/01_perceptron_logic_gates/README.md) | [Idea](topics/01_perceptron_logic_gates/idea.md) | [Code](topics/01_perceptron_logic_gates/cpp/README.md) | [Code](topics/01_perceptron_logic_gates/python/README.md) | Planned | Planned | Planned | — |
 | 02 | [XOR multilayer perceptron](topics/02_xor_mlp/README.md) | [Idea](topics/02_xor_mlp/idea.md) | [Code](topics/02_xor_mlp/cpp/README.md) | [Code](topics/02_xor_mlp/python/README.md) | Planned | Planned | Planned | — |
@@ -49,17 +49,5 @@ Implementation links open the topic's source/test guide. **Planned** means unimp
 
 ## Repository layout
 
-```text
-topics/<number>_<topic>/
-  README.md             # Experiment method, commands, results, limitations
-  idea.md               # Algorithm and mathematical explanation
-  cpp/                  # C++ model, driver, support, interfaces, tests
-  python/               # Python model, experiment, public API, tests (when implemented)
-shared/                 # Common infrastructure; no copied topic algorithms
-docs/                   # Setup, implementation conventions, design, contributor guidance
-tests/                  # Shared integration and repository-tool tests
-```
-
-Later topics reuse earlier implementations by reference. Shared code has one canonical owner;
-planned backends gain a topic-local directory when implemented. See the
-[ownership rules](docs/design/repository-layout.md) and [quality checks](docs/testing.md).
+Each topic owns its README, idea, and backend code/tests. Shared infrastructure lives in `shared/`.
+See [ownership rules](docs/architecture.md) and [quality checks](docs/testing.md).

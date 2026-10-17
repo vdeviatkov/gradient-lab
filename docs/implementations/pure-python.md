@@ -17,7 +17,7 @@ The package mapping is explicit in [pyproject.toml](../../pyproject.toml) and su
 installs and ordinary wheels. Do not copy files into a second package tree.
 
 Shared data fixtures and stable scalar functions live in
-[shared/python/ml_scratch/pure/](../../shared/python/ml_scratch/pure/). Model imports retain the
+[shared/python/ml_scratch/pure/](../../shared/python/ml_scratch/pure). Model imports retain the
 `ml_scratch.pure.<model>` API. Experiment modules now sit under their model package as
 `ml_scratch.pure.<model>.experiment`; installed `ml-*` command names are unchanged.
 

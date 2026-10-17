@@ -15,7 +15,8 @@ python scripts/check_docs.py
 `pytest` runs topic-local `python/tests/`, shared fixture/numerics tests in `tests/python/`,
 and development-tool tests in `tests/tooling/`. Ruff checks Python code. The documentation checker validates local Markdown
 file/directory links and Markdown heading anchors in tracked and non-ignored new documentation;
-it does not access the network or validate remote URLs.
+it also rejects maintained documents without a navigation path from the root README.
+It does not access the network or validate remote URLs.
 
 Run a focused check while developing:
 

@@ -114,7 +114,7 @@ epochs. The reason is initialization and nothing else: both draw Glorot-scaled u
 with zero biases, but `random.Random` and `std::mt19937` with `std::uniform_real_distribution`
 produce different numbers from the seed `7`, so the two runs start at different points on the
 same loss surface. They end in the same place to four decimals, which is the comparison worth
-making. `docs/design/reproducibility.md` states this expectation in advance; this is the
+making. [The reproducibility contract](../../docs/reproducibility.md) states this expectation in advance; this is the
 measurement of it.
 
 ## Limitations

@@ -1,25 +1,36 @@
-# Implementation conventions
+# Backend conventions
 
-[Topics and implementation status](../../README.md#topics) · [Setup](../getting-started.md)
+[Topic/status matrix](../../README.md#topics) · [Setup](../getting-started.md)
 
-These guides describe shared tooling and conventions. Topic-specific code, tests, and instructions
-live under `topics/<topic>/<backend>/`; follow the root topic table for a specific implementation.
+Implemented backends have shared tooling guides:
 
-| Backend | Guide |
-|---|---|
-| C++20 | [C++](cpp.md) |
-| Pure Python | [Python](pure-python.md) |
-| NumPy | [NumPy](numpy.md) |
-| PyTorch | [PyTorch](pytorch.md) |
-| JAX | [JAX](jax.md) |
-| Triton | [Triton](triton.md) |
+- [C++20](cpp.md): compilation, includes, core/support linking, and source ownership.
+- [Pure Python](pure-python.md): package mapping, model imports, and experiment CLIs.
 
-Equivalent implementations must match the educational algorithm and behavior contract. Document
-loss scaling, initialization, stopping rules, and numerical differences before reporting speedups.
+## Planned backends
+
+The root matrix records implementation status. These sections define scope without creating empty
+backend folders or separate placeholder documents.
+
+### NumPy
+
+Vectorize explicit operations and gradients while preserving scalar reference behavior.
+
+### PyTorch
+
+Use tensors and compare hand-derived gradients with automatic differentiation.
+
+### JAX
+
+Explore functional transformations, automatic differentiation, vectorization, and JIT.
+
+### Triton
+
+Teach GPU tiling, memory movement, and fusion where a standalone kernel adds educational value.
 
 ## Adding a backend
 
-Place a topic’s new implementation under `topics/<topic>/<backend>/` with its README and tests.
-Link the existing `idea.md`; do not copy the mathematics or mirror source into another package.
-Match the topic’s behavior contract, record numerical differences and measurements, and update
-only the root status matrix when the implementation is complete.
+Put a new implementation, README, and tests under `topics/<topic>/<backend>/`. Link its existing
+`idea.md` rather than copying mathematics or mirroring source into another package. Match the
+topic's behavior contract; document loss scaling, initialization, stopping rules, and numerical
+differences before comparing performance. Update the root status matrix when the milestone lands.

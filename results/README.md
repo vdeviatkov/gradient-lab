@@ -1,22 +1,32 @@
-# Results
+# Results policy
 
-[Experiments](../README.md#topics) · [Topic reports](../README.md#topics)
+[Topic reports](../README.md#topics) · [Reproducibility](../docs/reproducibility.md)
 
-Only measured, reproducible outputs belong here. Never publish estimates as experimental results.
-For every report, record:
+Only measured, reproducible outputs belong here. Keep human-readable methods, configuration,
+results, interpretation, and limitations in the owning topic's README; do not maintain a second
+report here.
 
-- The exact command and implementation/version.
-- Dataset identity, preprocessing, splits, configuration, and deterministic seeds.
-- Software and hardware environment.
-- Measurement method, including build type, warm-up, repetitions, and timing boundaries where relevant.
-- Evaluation criteria, observed outcomes, and limitations.
+Every published measurement records the exact command, implementation/version, dataset identity,
+preprocessing, splits, configuration, seeds, software/hardware environment, and measurement method.
+For performance work, state build type, timing boundaries, warm-up, repetitions, and variability.
+Never substitute estimates for experimental results.
 
-| Output | Location | Policy |
-|---|---|---|
-| Runtime and build measurements | [benchmarks/](benchmarks/README.md) | Generated files are ignored; retain reproduction instructions |
-| Generated plots and images | [figures/](figures/README.md) | Ignored by default; curate only figures backed by a documented experiment |
-| Human-readable methods and findings | [Topic READMEs](../README.md#topics) | Keep configuration, evidence, and interpretation together |
+## Benchmarks
 
-Large datasets, trained model files, local environments, and build outputs do not belong in Git.
-A seed guarantees reproducibility only within the stated generator/toolchain contract; see
-[reproducibility](../docs/design/reproducibility.md).
+Generated files under `results/benchmarks/` are ignored:
+
+- `cpp.json`: runtime repetitions and compiler, platform, build, clock, and memory metadata.
+- `cpp_build.json`: configure and compilation times for a clean Release build.
+
+Regenerate them with `./build/cpp_benchmarks` and `./scripts/benchmark_build.sh`. See
+[topic 19](../topics/19_benchmarks/README.md) for methodology, acceptance criteria, results, and
+limitations. Future implementations use the same report shape with their own implementation name.
+Timings do not reproduce exactly, even when model behavior does.
+
+## Figures
+
+Generated plots and images under `results/figures/` are ignored. Curate and explicitly add only
+figures backed by a documented experiment. Scripts create output directories when needed; empty
+placeholder folders are not required.
+
+Large datasets, trained models, local environments, and build products stay out of Git.

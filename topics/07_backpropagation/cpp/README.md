@@ -36,3 +36,10 @@ Dataset requirements and measured results are documented in the [topic README](.
 - [neural_network_test.cpp](tests/neural_network_test.cpp)
 
 These tests are registered with CTest by the local [CMakeLists.txt](CMakeLists.txt).
+
+## Diagnostic API
+
+[Gradient checks](utils/gradient_check.cpp) perturb a copy, leaving model parameters and
+normalization state unchanged. One finite-difference implementation serves dense, recurrent, and
+Transformer checks. Training always uses explicitly derived gradients. Link `ml_scratch_utils`
+when using the diagnostic API.

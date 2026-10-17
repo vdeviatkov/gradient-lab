@@ -1,6 +1,6 @@
 # Topic ownership and repository layout
 
-[Design guides](README.md) · [Canonical topic/status matrix](../../README.md#topics)
+[Design guides](README.md#architecture) · [Canonical topic/status matrix](../README.md#topics)
 
 ```text
 topics/<number>_<topic>/
@@ -37,7 +37,7 @@ results/                        # Generated-output policy; measurements remain i
   regularization topics use the dense network in topic 07; LSTM/GRU uses the recurrent model in
   topic 15. No model copy is created just to fill a folder.
 - Truly common operations live under `shared/`; do not move a model there merely because a later
-  topic calls it. The [shared README](../../shared/README.md) defines the infrastructure boundary.
+  topic calls it. The [shared README](../shared/README.md) defines the infrastructure boundary.
 - The root topic table is the single catalog and implementation-status matrix. Language guides
   describe conventions rather than repeating the catalog.
 - Planned backends gain a local directory with their implementation, not a collection of empty
@@ -53,4 +53,4 @@ in topic 15 rather than being declared in the shared corpus header. Experiment m
 
 `build/`, `build-*/`, `cmake-build-*/`, `.venv/`, caches, IDE state, `data/`, and generated output
 remain local and ignored. They are not part of the maintained source layout. The package/build
-configuration remains at the root, with [contributor guidance](../../CONTRIBUTING.md) and the license.
+configuration remains at the root, with [contributor guidance](../CONTRIBUTING.md) and the license.
