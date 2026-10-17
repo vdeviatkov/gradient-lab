@@ -13,9 +13,9 @@
 #include <cstdlib>
 #include <filesystem>
 #include <iomanip>
+#include <iostream>
 #include <limits>
 #include <sstream>
-#include <iostream>
 #include <string>
 #include <vector>
 
@@ -119,10 +119,9 @@ void print_result(const ml_scratch::BenchmarkResult& result, const double clock_
     } else {
         cold << std::fixed << std::setprecision(1) << result.cold_ratio() << "x";
     }
-    std::cout << "  " << padded << time << units << std::setw(13) << cold.str()
-              << std::setw(9) << std::setprecision(1)
-              << 100.0 * result.relative_spread() << "%" << std::setw(8) << result.iterations
-              << std::setw(7) << result.repetitions << '\n';
+    std::cout << "  " << padded << time << units << std::setw(13) << cold.str() << std::setw(9)
+              << std::setprecision(1) << 100.0 * result.relative_spread() << "%" << std::setw(8)
+              << result.iterations << std::setw(7) << result.repetitions << '\n';
 }
 
 } // namespace
@@ -161,8 +160,7 @@ int main() {
                                        ml_scratch::Loss::softmax_cross_entropy,
                                        seed};
     const std::vector<double> image = synthetic_features(1, 784, 1).front();
-    record(ml_scratch::benchmark("MLP 784-128-10 forward",
-                                 [&] { return mlp.forward(image); }));
+    record(ml_scratch::benchmark("MLP 784-128-10 forward", [&] { return mlp.forward(image); }));
 
     // The same computation with its scratch space reused instead of allocated per call, which
     // isolates what the per-call allocation costs. At this size the answer turns out to be
@@ -190,15 +188,15 @@ int main() {
     print_header();
     const auto batch = synthetic_labeled(32, 784, 10, 2);
     {
-        auto result = ml_scratch::benchmark("MLP gradient, batch 32",
-                                            [&] { return mlp.gradient(batch); });
+        auto result =
+            ml_scratch::benchmark("MLP gradient, batch 32", [&] { return mlp.gradient(batch); });
         result.work_per_iteration = 32.0;
         result.work_unit = "samples";
         record(std::move(result));
     }
     {
-        auto result = ml_scratch::benchmark("CNN gradient, batch 32",
-                                            [&] { return cnn.gradient(batch); });
+        auto result =
+            ml_scratch::benchmark("CNN gradient, batch 32", [&] { return cnn.gradient(batch); });
         result.work_per_iteration = 32.0;
         result.work_unit = "samples";
         record(std::move(result));
@@ -213,9 +211,9 @@ int main() {
     for (const auto cell : {ml_scratch::RecurrentCell::elman, ml_scratch::RecurrentCell::lstm,
                             ml_scratch::RecurrentCell::gru}) {
         ml_scratch::CharRnn network{vocabulary, 128, seed, cell};
-        auto result = ml_scratch::benchmark(
-            std::string{ml_scratch::recurrent_cell_name(cell)} + " 128, BPTT over 50",
-            [&] { return network.gradient(text); });
+        auto result = ml_scratch::benchmark(std::string{ml_scratch::recurrent_cell_name(cell)} +
+                                                " 128, BPTT over 50",
+                                            [&] { return network.gradient(text); });
         result.work_per_iteration = window;
         result.work_unit = "characters";
         record(std::move(result));
@@ -252,16 +250,16 @@ int main() {
     }
     {
         ml_scratch::SnakeGame game{{10, 10}, 1};
-        auto result = ml_scratch::benchmark("snake observation",
-                                            [&] { return game.observation(); });
+        auto result =
+            ml_scratch::benchmark("snake observation", [&] { return game.observation(); });
         result.work_unit = "observations";
         record(std::move(result));
     }
     {
         ml_scratch::TabularQLearning agent{};
         const ml_scratch::Transition sample{{}, 17, 1, 1.0, {}, 33, false};
-        auto result = ml_scratch::benchmark("tabular Q update",
-                                            [&] { return agent.learn(sample); });
+        auto result =
+            ml_scratch::benchmark("tabular Q update", [&] { return agent.learn(sample); });
         result.work_unit = "updates";
         record(std::move(result));
     }
@@ -291,30 +289,59 @@ int main() {
     struct Module {
         std::string name;
         std::string header;
-        std::string source;
+        std::vector<std::string> sources;
     };
     const std::vector<Module> modules{
-        {"neural_network", "neural_network.hpp", "neural_network.cpp"},
-        {"convolution", "convolution.hpp", "convolution.cpp"},
-        {"rnn (three cells)", "rnn.hpp", "rnn.cpp"},
-        {"transformer", "transformer.hpp", "transformer.cpp"},
-        {"reinforcement", "reinforcement.hpp", "reinforcement.cpp"},
-        {"snake", "snake.hpp", "snake.cpp"},
-        {"benchmark", "benchmark.hpp", "benchmark.cpp"},
+        {"neural_network",
+         "include/ml_scratch/neural_network.hpp",
+         {"src/neural_network.cpp", "utils/neural_network_checkpoint.cpp"}},
+        {"convolution",
+         "include/ml_scratch/convolution.hpp",
+         {"src/convolution.cpp", "utils/convolution_checkpoint.cpp"}},
+        {"rnn (three cells)",
+         "include/ml_scratch/rnn.hpp",
+         {"src/rnn.cpp", "utils/rnn_checkpoint.cpp", "utils/rnn_diagnostics.cpp"}},
+        {"transformer",
+         "include/ml_scratch/transformer.hpp",
+         {"src/transformer.cpp", "utils/transformer_checkpoint.cpp",
+          "utils/transformer_diagnostics.cpp"}},
+        {"reinforcement",
+         "include/ml_scratch/reinforcement.hpp",
+         {"src/reinforcement.cpp", "utils/reinforcement_checkpoint.cpp"}},
+        {"snake", "include/ml_scratch/snake.hpp", {"src/snake.cpp", "utils/snake_render.cpp"}},
+        {"benchmark", "include/ml_scratch/benchmark.hpp", {"utils/benchmark.cpp"}},
     };
+    // Shared helpers are counted once, after the per-model implementations.
+    const std::vector<Module> support{
+        {"evaluation",
+         "include/ml_scratch/utils/classification_metrics.hpp",
+         {"utils/evaluation.cpp", "utils/classification_metrics.cpp"}},
+        {"gradient checking",
+         "include/ml_scratch/utils/gradient_check.hpp",
+         {"utils/gradient_check.cpp"}},
+        {"Transformer cache", "internal/transformer_workspace.hpp", {}},
+        {"gradient clipping", "include/ml_scratch/gradient.hpp", {"src/gradient.cpp"}},
+        {"reporting",
+         "include/ml_scratch/project_info.hpp",
+         {"utils/reporting.cpp", "utils/project_info.cpp"}},
+    };
+    auto measured_modules = modules;
+    measured_modules.insert(measured_modules.end(), support.begin(), support.end());
     std::size_t total_code = 0;
     bool sources_readable = true;
-    for (const Module& module : modules) {
+    for (const Module& module : measured_modules) {
         try {
-            const auto header =
-                ml_scratch::measure_source(root + "/include/ml_scratch/" + module.header);
-            const auto source = ml_scratch::measure_source(root + "/src/" + module.source);
+            const auto header = ml_scratch::measure_source(root + "/" + module.header);
+            std::size_t source_code_lines = 0;
+            for (const auto& path : module.sources) {
+                source_code_lines += ml_scratch::measure_source(root + "/" + path).code_lines;
+            }
             std::string padded = module.name;
             padded.resize(36, ' ');
             std::cout << "  " << padded << std::setw(7) << header.code_lines << std::setw(9)
-                      << source.code_lines << std::setw(8)
-                      << header.code_lines + source.code_lines << '\n';
-            total_code += header.code_lines + source.code_lines;
+                      << source_code_lines << std::setw(8) << header.code_lines + source_code_lines
+                      << '\n';
+            total_code += header.code_lines + source_code_lines;
         } catch (const std::exception& error) {
             std::cout << "  (source sizes unavailable: " << error.what() << ")\n";
             sources_readable = false;
@@ -349,10 +376,9 @@ int main() {
 
     // ---------- Summary and criteria ----------
     const auto find = [&results](const std::string& name) -> const ml_scratch::BenchmarkResult& {
-        const auto match = std::find_if(results.begin(), results.end(),
-                                        [&name](const ml_scratch::BenchmarkResult& result) {
-                                            return result.name == name;
-                                        });
+        const auto match = std::find_if(
+            results.begin(), results.end(),
+            [&name](const ml_scratch::BenchmarkResult& result) { return result.name == name; });
         if (match == results.end()) {
             throw std::logic_error("no benchmark named " + name);
         }
@@ -364,10 +390,9 @@ int main() {
     std::string coldest;
     for (const auto& result : results) {
         worst_spread = std::max(worst_spread, result.relative_spread());
-        shortest_repetition_ratio =
-            std::min(shortest_repetition_ratio, result.median() *
-                                                    static_cast<double>(result.iterations) /
-                                                    clock.resolution_seconds);
+        shortest_repetition_ratio = std::min(
+            shortest_repetition_ratio,
+            result.median() * static_cast<double>(result.iterations) / clock.resolution_seconds);
         if (result.cold_ratio() > largest_cold_ratio) {
             largest_cold_ratio = result.cold_ratio();
             coldest = result.name;
@@ -392,10 +417,10 @@ int main() {
               << scaled(elman.median() / 50.0) << ", LSTM " << scaled(lstm.median() / 50.0)
               << ", transformer " << scaled(transformer.median() / 50.0) << '\n'
               << "  one Q-learning update: table " << scaled(tabular.median()) << ", network "
-              << scaled(deep.median()) << " for a batch of 32 — "
-              << std::setprecision(0) << deep.median() / tabular.median() << "x"
-              << std::setprecision(2) << '\n'
-              << "  a snake step costs " << scaled(snake_step.median()) << ", so an episode of "
+              << scaled(deep.median()) << " for a batch of 32 — " << std::setprecision(0)
+              << deep.median() / tabular.median() << "x" << std::setprecision(2) << '\n'
+              << "  a snake step costs " << scaled(snake_step.median())
+              << ", so an episode of "
                  "150 steps is "
               << scaled(snake_step.median() * 150.0) << " of environment against "
               << scaled(deep.median() * 150.0) << " of learning\n"
@@ -443,11 +468,10 @@ int main() {
         !attention_costs_more || !table_beats_network || !environment_is_cheap ||
         !allocation_is_negligible || !written || !sources_readable) {
         std::cerr << "experiment failed its criteria: worst spread " << worst_spread
-                  << ", largest cold ratio " << largest_cold_ratio << ", elman "
-                  << elman.median() << ", lstm " << lstm.median() << ", transformer "
-                  << transformer.median() << ", tabular " << tabular.median() << ", dqn "
-                  << deep.median() << ", step " << snake_step.median() << ", written " << written
-                  << '\n';
+                  << ", largest cold ratio " << largest_cold_ratio << ", elman " << elman.median()
+                  << ", lstm " << lstm.median() << ", transformer " << transformer.median()
+                  << ", tabular " << tabular.median() << ", dqn " << deep.median() << ", step "
+                  << snake_step.median() << ", written " << written << '\n';
         return 1;
     }
     return 0;

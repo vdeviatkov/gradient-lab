@@ -32,8 +32,7 @@ Cell offset(const Heading heading) noexcept {
 
 } // namespace
 
-SnakeGame::SnakeGame(SnakeConfig config, const std::uint64_t seed)
-    : config_(config), state_(seed) {
+SnakeGame::SnakeGame(SnakeConfig config, const std::uint64_t seed) : config_(config), state_(seed) {
     if (config_.width < 4 || config_.height < 4) {
         throw std::invalid_argument("the board must be at least four cells on a side");
     }
@@ -52,8 +51,8 @@ void SnakeGame::reset() {
     const int centre_x = static_cast<int>(config_.width / 2);
     const int centre_y = static_cast<int>(config_.height / 2);
     // Head first, so the body reads from the head backwards and growing is a push at the front.
-    body_.assign({Cell{centre_x, centre_y}, Cell{centre_x - 1, centre_y},
-                  Cell{centre_x - 2, centre_y}});
+    body_.assign(
+        {Cell{centre_x, centre_y}, Cell{centre_x - 1, centre_y}, Cell{centre_x - 2, centre_y}});
     heading_ = Heading::right;
     score_ = 0;
     steps_ = 0;
@@ -152,9 +151,7 @@ SnakeStepResult SnakeGame::step(const SnakeAction action) {
     return result;
 }
 
-std::size_t SnakeGame::maximum_score() const noexcept {
-    return config_.width * config_.height - 3;
-}
+std::size_t SnakeGame::maximum_score() const noexcept { return config_.width * config_.height - 3; }
 
 std::vector<double> SnakeGame::observation() const {
     std::vector<double> features(observation_size, 0.0);
@@ -179,32 +176,6 @@ std::size_t SnakeGame::state_index() const {
         index = (index << 1) | (features[bit] > 0.5 ? 1U : 0U);
     }
     return index;
-}
-
-std::string SnakeGame::render() const {
-    std::string picture;
-    picture.reserve((config_.width + 3) * (config_.height + 2));
-    picture.append(config_.width + 2, '#');
-    picture.push_back('\n');
-    for (std::size_t y = 0; y < config_.height; ++y) {
-        picture.push_back('#');
-        for (std::size_t x = 0; x < config_.width; ++x) {
-            const Cell cell{static_cast<int>(x), static_cast<int>(y)};
-            if (cell == body_.front()) {
-                picture.push_back('@');
-            } else if (std::find(body_.begin(), body_.end(), cell) != body_.end()) {
-                picture.push_back('o');
-            } else if (cell == food_) {
-                picture.push_back('*');
-            } else {
-                picture.push_back(' ');
-            }
-        }
-        picture.append("#\n");
-    }
-    picture.append(config_.width + 2, '#');
-    picture.push_back('\n');
-    return picture;
 }
 
 } // namespace ml_scratch

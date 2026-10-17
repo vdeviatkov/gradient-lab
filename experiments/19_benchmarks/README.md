@@ -198,3 +198,11 @@ exist yet — the NumPy, PyTorch, JAX and Triton columns of the status table are
 nothing here is yet a comparison *between* implementations, only a measurement of one. The line
 counts are a crude proxy for complexity and ignore how much of the work each line does. And the
 CNN forward figure should be re-measured before it is quoted anywhere.
+
+
+Source-size reporting follows the C++ core/support split: each model's checkpoint and diagnostic
+translation units are included alongside its core source, and shared evaluation, gradient-check,
+gradient-clipping, and reporting helpers appear as separate rows counted once. The Transformer
+cache declaration is also counted. Moving code to `utils/` must not make it disappear from the
+reported implementation size. Previously recorded tables above describe the source at that run;
+run the experiment again to measure the current layout.

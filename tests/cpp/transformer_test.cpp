@@ -1,6 +1,7 @@
 #include "ml_scratch/deterministic_random.hpp"
 #include "ml_scratch/neural_network.hpp"
 #include "ml_scratch/transformer.hpp"
+#include "ml_scratch/utils/gradient_check.hpp"
 
 #include <cmath>
 #include <filesystem>
@@ -44,7 +45,8 @@ void test_configuration_and_parameter_count() {
     const std::size_t block = 16 + 256 + 16 + 256 + 32 + 256 + 8;
     require(network.parameter_count() == 40 + 2 * block + 16 + 45,
             "the parameter count should follow the layout");
-    require(network.config().feed_forward_size == 32, "feed-forward defaults to four times the model");
+    require(network.config().feed_forward_size == 32,
+            "feed-forward defaults to four times the model");
 
     require_invalid_argument([] { ml_scratch::CharTransformer bad{{5, 8, 8, 3, 2}}; },
                              "a model size that is not a multiple of the heads is rejected");
@@ -54,8 +56,9 @@ void test_configuration_and_parameter_count() {
                              "a zero context is rejected");
     require_invalid_argument([&] { static_cast<void>(network.loss({0})); },
                              "a single id predicts nothing");
-    require_invalid_argument([&] { static_cast<void>(network.loss({0, 1, 2, 3, 4, 0, 1, 2, 3, 4})); },
-                             "a sequence longer than the context is rejected");
+    require_invalid_argument(
+        [&] { static_cast<void>(network.loss({0, 1, 2, 3, 4, 0, 1, 2, 3, 4})); },
+        "a sequence longer than the context is rejected");
     require_invalid_argument([&] { static_cast<void>(network.loss({0, 9})); },
                              "ids outside the vocabulary are rejected");
 }
@@ -88,8 +91,7 @@ void test_positional_encoding_and_masking() {
             }
         }
     }
-    require(network.predict({0, 3, 1}) == network.predict({0, 3, 1}),
-            "predict is deterministic");
+    require(network.predict({0, 3, 1}) == network.predict({0, 3, 1}), "predict is deterministic");
 
     // Without the positional encoding a single block is permutation-invariant over the past:
     // the final position attends to values that depend only on each past token, so the order of
@@ -128,22 +130,27 @@ void test_positional_encoding_and_masking() {
 void test_gradient_matches_finite_differences() {
     const ml_scratch::TokenSequence ids{0, 3, 1, 4, 4, 2, 0, 1, 3};
     ml_scratch::CharTransformer network{small, 3};
-    require(ml_scratch::check_gradient(network.gradient(ids), network.numerical_gradient(ids)).passed,
+    require(ml_scratch::check_gradient(network.gradient(ids),
+                                       ml_scratch::numerical_gradient(network, ids))
+                .passed,
             "the transformer gradient failed its check");
     // A shorter sequence than the context, one head, no positional encoding, and the relative
     // position bias instead.
     ml_scratch::TransformerConfig other{5, 8, 4, 1, 3, 6, false, true};
     ml_scratch::CharTransformer variant{other, 9};
     const ml_scratch::TokenSequence shorter{2, 2, 0, 4, 1};
-    require(ml_scratch::check_gradient(variant.gradient(shorter), variant.numerical_gradient(shorter))
+    require(ml_scratch::check_gradient(variant.gradient(shorter),
+                                       ml_scratch::numerical_gradient(variant, shorter))
                 .passed,
             "the variant transformer gradient failed its check");
 
     // The loss is the mean over positions of the softmax cross-entropy, checked against predict.
     double expected = 0.0;
     for (std::size_t position = 1; position < ids.size(); ++position) {
-        const ml_scratch::TokenSequence prefix(ids.begin(), ids.begin() + static_cast<std::ptrdiff_t>(position));
-        expected -= std::log(network.predict(prefix)[ids[position]]) / static_cast<double>(ids.size() - 1);
+        const ml_scratch::TokenSequence prefix(ids.begin(),
+                                               ids.begin() + static_cast<std::ptrdiff_t>(position));
+        expected -=
+            std::log(network.predict(prefix)[ids[position]]) / static_cast<double>(ids.size() - 1);
     }
     require_near(network.loss(ids), expected, 1e-12,
                  "loss should be the mean cross-entropy of each prefix's prediction");
@@ -156,7 +163,8 @@ void test_gradient_matches_finite_differences() {
     for (std::size_t offset = 0; offset < 20; offset += 8) {
         const std::size_t steps = std::min<std::size_t>(8, 20 - offset);
         const ml_scratch::TokenSequence window(text.begin() + static_cast<std::ptrdiff_t>(offset),
-                                               text.begin() + static_cast<std::ptrdiff_t>(offset + steps + 1));
+                                               text.begin() +
+                                                   static_cast<std::ptrdiff_t>(offset + steps + 1));
         total += network.loss(window) * static_cast<double>(steps);
     }
     require_near(network.evaluate(text), total / 20.0, 1e-12,
@@ -168,7 +176,8 @@ void test_gradient_matches_finite_differences() {
     for (std::size_t position = 1; position <= 20; ++position) {
         const std::size_t start = position <= 8 ? 0 : ((position - 5) / 4) * 4;
         const ml_scratch::TokenSequence prefix(text.begin() + static_cast<std::ptrdiff_t>(start),
-                                               text.begin() + static_cast<std::ptrdiff_t>(position));
+                                               text.begin() +
+                                                   static_cast<std::ptrdiff_t>(position));
         strided -= std::log(network.predict(prefix)[text[position]]);
     }
     require_near(network.evaluate(text, 4), strided / 20.0, 1e-12,
@@ -265,7 +274,8 @@ void test_seed_reproducibility_and_checkpoints() {
             "training is deterministic");
 
     const std::string path =
-        (std::filesystem::temp_directory_path() / "ml_scratch_transformer_test.checkpoint").string();
+        (std::filesystem::temp_directory_path() / "ml_scratch_transformer_test.checkpoint")
+            .string();
     first.save(path);
     const auto restored = ml_scratch::CharTransformer::load(path);
     require(restored.config() == first.config() && restored.parameters() == first.parameters(),
@@ -277,7 +287,8 @@ void test_seed_reproducibility_and_checkpoints() {
     std::filesystem::remove(path);
 
     const std::string broken =
-        (std::filesystem::temp_directory_path() / "ml_scratch_transformer_broken.checkpoint").string();
+        (std::filesystem::temp_directory_path() / "ml_scratch_transformer_broken.checkpoint")
+            .string();
     {
         std::ofstream stream{broken};
         stream << "ml_scratch_char_transformer 1\nvocabulary 4\ncontext 8\nmodel 8\nheads 2\n"

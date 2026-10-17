@@ -1,4 +1,5 @@
 #include "ml_scratch/convolution.hpp"
+#include "ml_scratch/utils/gradient_check.hpp"
 
 #include <cmath>
 #include <filesystem>

@@ -267,22 +267,4 @@ PrincipalComponentAnalysis::inverse_transform(const std::vector<double>& project
     return reconstruction;
 }
 
-double PrincipalComponentAnalysis::reconstruction_error(const FeatureMatrix& data) const {
-    require_fitted();
-    const std::size_t features = validate_feature_matrix(data);
-    if (features != feature_count()) {
-        throw std::invalid_argument("feature count does not match the fitted model");
-    }
-
-    double squared_error = 0.0;
-    for (const auto& sample : data) {
-        squared_error += squared_euclidean_distance(sample, inverse_transform(transform(sample)));
-    }
-    return squared_error / static_cast<double>(data.size() * features);
-}
-
-double PrincipalComponentAnalysis::cumulative_explained_variance_ratio() const noexcept {
-    return std::accumulate(explained_variance_ratio_.begin(), explained_variance_ratio_.end(), 0.0);
-}
-
 } // namespace ml_scratch

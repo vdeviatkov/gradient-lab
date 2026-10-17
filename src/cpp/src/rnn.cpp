@@ -3,43 +3,10 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <fstream>
-#include <iomanip>
 #include <limits>
 #include <stdexcept>
 
 namespace ml_scratch {
-
-double clip_gradient(std::vector<double>& gradient, const double max_norm) {
-    // An infinite threshold is allowed: it never clips but still measures the norm.
-    if (std::isnan(max_norm) || max_norm <= 0.0) {
-        throw std::invalid_argument("the clipping threshold must be positive");
-    }
-    double squared = 0.0;
-    for (const double value : gradient) {
-        squared += value * value;
-    }
-    const double norm = std::sqrt(squared);
-    if (norm > max_norm) {
-        const double factor = max_norm / norm;
-        for (double& value : gradient) {
-            value *= factor;
-        }
-    }
-    return norm;
-}
-
-const char* recurrent_cell_name(const RecurrentCell cell) {
-    switch (cell) {
-    case RecurrentCell::elman:
-        return "elman";
-    case RecurrentCell::lstm:
-        return "lstm";
-    case RecurrentCell::gru:
-        return "gru";
-    }
-    return "";
-}
 
 namespace {
 
@@ -193,7 +160,7 @@ void CharRnn::step_forward(const std::size_t input, const double* previous_hidde
         double* gates = workspace.gates.data() + step * 3 * hidden_size_;
         double* recurrent_candidate = workspace.extra.data() + step * hidden_size_;
         for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
-            gates[unit] = sigmoid(pre_activation(unit));                   // reset
+            gates[unit] = sigmoid(pre_activation(unit));                               // reset
             gates[hidden_size_ + unit] = sigmoid(pre_activation(hidden_size_ + unit)); // update
         }
         for (std::size_t unit = 0; unit < hidden_size_; ++unit) {
@@ -218,8 +185,8 @@ void CharRnn::step_forward(const std::size_t input, const double* previous_hidde
     }
 }
 
-double CharRnn::forward(const TokenSequence& ids, const std::size_t offset,
-                        const std::size_t steps, State& state, Workspace& workspace) const {
+double CharRnn::forward(const TokenSequence& ids, const std::size_t offset, const std::size_t steps,
+                        State& state, Workspace& workspace) const {
     const double* output_weights = parameters_.data() + output_offset();
     const double* output_bias = parameters_.data() + output_bias_offset();
     const bool has_cell = cell_ == RecurrentCell::lstm;
@@ -238,10 +205,10 @@ double CharRnn::forward(const TokenSequence& ids, const std::size_t offset,
         const std::size_t target = ids[offset + step + 1];
         double* hidden = workspace.hidden.data() + step * hidden_size_;
         const double* previous = step == 0 ? state.data() : hidden - hidden_size_;
-        const double* previous_cell =
-            !has_cell ? nullptr
-            : step == 0 ? state.data() + hidden_size_
-                        : workspace.cell.data() + (step - 1) * hidden_size_;
+        const double* previous_cell = !has_cell ? nullptr
+                                      : step == 0
+                                          ? state.data() + hidden_size_
+                                          : workspace.cell.data() + (step - 1) * hidden_size_;
         step_forward(input, previous, previous_cell, step, workspace);
 
         for (std::size_t id = 0; id < vocabulary_size_; ++id) {
@@ -401,9 +368,9 @@ void CharRnn::step_backward(const std::size_t input, const double* previous_hidd
     }
 }
 
-void CharRnn::backward(const TokenSequence& ids, const std::size_t offset,
-                       const std::size_t steps, const State& initial, const double scale,
-                       const bool last_only, std::vector<double>& flat, Workspace& workspace,
+void CharRnn::backward(const TokenSequence& ids, const std::size_t offset, const std::size_t steps,
+                       const State& initial, const double scale, const bool last_only,
+                       std::vector<double>& flat, Workspace& workspace,
                        std::vector<double>* reach) const {
     const double* output_weights = parameters_.data() + output_offset();
     double* output_gradient = flat.data() + output_offset();
@@ -427,10 +394,10 @@ void CharRnn::backward(const TokenSequence& ids, const std::size_t offset,
         const std::size_t target = ids[offset + step + 1];
         const double* hidden = workspace.hidden.data() + step * hidden_size_;
         const double* previous = step == 0 ? initial.data() : hidden - hidden_size_;
-        const double* previous_cell =
-            !has_cell ? nullptr
-            : step == 0 ? initial.data() + hidden_size_
-                        : workspace.cell.data() + (step - 1) * hidden_size_;
+        const double* previous_cell = !has_cell ? nullptr
+                                      : step == 0
+                                          ? initial.data() + hidden_size_
+                                          : workspace.cell.data() + (step - 1) * hidden_size_;
         const double* probabilities = workspace.probabilities.data() + step * vocabulary_size_;
 
         // dL/dz_t = p_t - onehot(target), unless this step's loss is excluded.
@@ -515,40 +482,6 @@ std::vector<double> CharRnn::gradient(const TokenSequence& ids, const State& sta
     return flat;
 }
 
-std::vector<double> CharRnn::numerical_gradient(const TokenSequence& ids, const State& state,
-                                                const double epsilon) const {
-    validate_ids(ids);
-    const State initial = state.empty() ? initial_state() : state;
-    validate_state(initial);
-    CharRnn probe = *this;
-    std::vector<double> numerical(parameters_.size(), 0.0);
-    for (std::size_t index = 0; index < parameters_.size(); ++index) {
-        const double original = parameters_[index];
-        probe.parameters_[index] = original + epsilon;
-        State above_state = initial;
-        const double above = probe.loss(ids, above_state);
-        probe.parameters_[index] = original - epsilon;
-        State below_state = initial;
-        const double below = probe.loss(ids, below_state);
-        probe.parameters_[index] = original;
-        numerical[index] = (above - below) / (2.0 * epsilon);
-    }
-    return numerical;
-}
-
-std::vector<double> CharRnn::gradient_reach(const TokenSequence& ids) const {
-    validate_ids(ids);
-    const std::size_t steps = ids.size() - 1;
-    const State initial = initial_state();
-    Workspace workspace;
-    State running = initial;
-    forward(ids, 0, steps, running, workspace);
-    std::vector<double> flat(parameters_.size(), 0.0);
-    std::vector<double> reach;
-    backward(ids, 0, steps, initial, 1.0, true, flat, workspace, &reach);
-    return reach;
-}
-
 namespace {
 
 void validate_training_config(const RnnTrainingConfig& config) {
@@ -625,9 +558,9 @@ RnnTrainingResult CharRnn::fit(const TokenSequence& train, const TokenSequence& 
                 window_loss += forward(train, offset, steps, states[stream], workspace);
                 backward(train, offset, steps, initial, scale, false, flat, workspace);
             }
-            const double norm = clip_gradient(
-                flat, config.clip_norm > 0.0 ? config.clip_norm
-                                             : std::numeric_limits<double>::infinity());
+            const double norm = clip_gradient(flat, config.clip_norm > 0.0
+                                                        ? config.clip_norm
+                                                        : std::numeric_limits<double>::infinity());
             if (!std::isfinite(norm)) {
                 throw std::runtime_error("training diverged to a non-finite gradient");
             }
@@ -698,8 +631,8 @@ TokenSequence CharRnn::generate(const TokenSequence& prompt, const std::size_t l
         std::size_t next = 0;
         if (temperature == 0.0) {
             const auto begin = workspace.probabilities.begin();
-            next = static_cast<std::size_t>(std::max_element(begin, begin + vocabulary_size_) -
-                                            begin);
+            next =
+                static_cast<std::size_t>(std::max_element(begin, begin + vocabulary_size_) - begin);
         } else {
             // Re-softmax the logits at the requested temperature, then invert the cumulative
             // distribution with one uniform draw.
@@ -742,83 +675,6 @@ void CharRnn::subtract_update(const std::vector<double>& update) {
     for (std::size_t index = 0; index < parameters_.size(); ++index) {
         parameters_[index] -= update[index];
     }
-}
-
-void CharRnn::save(const std::string& path) const {
-    std::ofstream stream{path};
-    if (!stream) {
-        throw std::runtime_error("cannot open checkpoint for writing: " + path);
-    }
-    stream << "ml_scratch_char_rnn 2\n"
-           << "cell " << static_cast<int>(cell_) << '\n'
-           << "vocabulary " << vocabulary_size_ << '\n'
-           << "hidden " << hidden_size_ << '\n'
-           << "parameters " << parameters_.size() << '\n'
-           << std::setprecision(17);
-    for (const double value : parameters_) {
-        stream << value << '\n';
-    }
-    if (!stream) {
-        throw std::runtime_error("failed while writing checkpoint: " + path);
-    }
-}
-
-CharRnn CharRnn::load(const std::string& path) {
-    std::ifstream stream{path};
-    if (!stream) {
-        throw std::runtime_error("cannot open checkpoint: " + path);
-    }
-    const auto expect = [&stream, &path](const std::string& keyword) {
-        std::string token;
-        if (!(stream >> token) || token != keyword) {
-            throw std::runtime_error("malformed checkpoint " + path + ": expected " + keyword);
-        }
-    };
-    const auto read_size = [&stream, &path] {
-        long long value = 0;
-        if (!(stream >> value) || value < 0) {
-            throw std::runtime_error("malformed checkpoint " + path + ": expected a size");
-        }
-        return static_cast<std::size_t>(value);
-    };
-
-    expect("ml_scratch_char_rnn");
-    const std::size_t version = read_size();
-    if (version < 1 || version > 2) {
-        throw std::runtime_error("unsupported checkpoint version in " + path);
-    }
-    // Version 1 predates the gated cells and is always an elman network.
-    RecurrentCell cell = RecurrentCell::elman;
-    if (version >= 2) {
-        expect("cell");
-        const std::size_t encoded = read_size();
-        if (encoded > static_cast<std::size_t>(RecurrentCell::gru)) {
-            throw std::runtime_error("unknown cell in checkpoint " + path);
-        }
-        cell = static_cast<RecurrentCell>(encoded);
-    }
-    expect("vocabulary");
-    const std::size_t vocabulary_size = read_size();
-    expect("hidden");
-    const std::size_t hidden_size = read_size();
-    if (vocabulary_size < 2 || hidden_size == 0) {
-        throw std::runtime_error("checkpoint declares an invalid architecture: " + path);
-    }
-    CharRnn network{vocabulary_size, hidden_size, 0, cell};
-    expect("parameters");
-    const std::size_t count = read_size();
-    if (count != network.parameter_count()) {
-        throw std::runtime_error("checkpoint parameter count does not match its architecture: " +
-                                 path);
-    }
-    std::vector<double> values(count, 0.0);
-    for (double& value : values) {
-        if (!(stream >> value)) {
-            throw std::runtime_error("truncated checkpoint: " + path);
-        }
-    }
-    network.set_parameters(values);
-    return network;
 }
 
 } // namespace ml_scratch

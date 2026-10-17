@@ -27,14 +27,6 @@ int BinaryPerceptron::predict(const LogicInput& features) const noexcept {
     return decision_score(features) >= 0.0 ? 1 : 0;
 }
 
-double BinaryPerceptron::accuracy(const LogicDataset& dataset) const noexcept {
-    std::size_t correct = 0;
-    for (const auto& [features, target] : dataset) {
-        correct += predict(features) == target ? 1U : 0U;
-    }
-    return static_cast<double>(correct) / static_cast<double>(dataset.size());
-}
-
 PerceptronTrainingResult BinaryPerceptron::fit(LogicDataset dataset, const std::size_t max_epochs,
                                                const bool shuffle) {
     if (max_epochs == 0) {

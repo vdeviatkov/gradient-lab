@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <fstream>
 #include <numeric>
 #include <stdexcept>
 #include <utility>
@@ -73,42 +72,30 @@ void require_sample_at_a_time(const std::vector<DenseLayer>& layers, const char*
 
 } // namespace
 
-const char* generator_loss_name(const GeneratorLoss loss) {
-    switch (loss) {
-    case GeneratorLoss::non_saturating:
-        return "non-saturating";
-    case GeneratorLoss::minimax:
-        return "minimax";
-    }
-    return "";
-}
-
 ConditionalGan::ConditionalGan(const std::size_t noise_size, const std::size_t class_count,
                                std::vector<DenseLayer> generator,
                                std::vector<DenseLayer> discriminator, const std::uint32_t seed)
-    : ConditionalGan{noise_size, class_count,
-                     [&] {
-                         if (noise_size == 0) {
-                             throw std::invalid_argument("noise_size must be positive");
-                         }
-                         if (class_count == 0) {
-                             throw std::invalid_argument("class_count must be positive");
-                         }
-                         if (generator.empty() || discriminator.empty()) {
-                             throw std::invalid_argument(
-                                 "both networks need at least one layer");
-                         }
-                         require_sample_at_a_time(generator, "the generator");
-                         require_sample_at_a_time(discriminator, "the discriminator");
-                         // The generator's own loss is never evaluated; mean squared error is
-                         // the one that allows any output activation.
-                         return FeedForwardNetwork{std::move(generator), Loss::mean_squared_error,
-                                                   seed};
-                     }(),
-                     // A distinct seed keeps the two networks from starting as scaled copies of
-                     // each other's first layer.
-                     FeedForwardNetwork{std::move(discriminator), Loss::binary_cross_entropy,
-                                        seed + 1}} {}
+    : ConditionalGan{
+          noise_size, class_count,
+          [&] {
+              if (noise_size == 0) {
+                  throw std::invalid_argument("noise_size must be positive");
+              }
+              if (class_count == 0) {
+                  throw std::invalid_argument("class_count must be positive");
+              }
+              if (generator.empty() || discriminator.empty()) {
+                  throw std::invalid_argument("both networks need at least one layer");
+              }
+              require_sample_at_a_time(generator, "the generator");
+              require_sample_at_a_time(discriminator, "the discriminator");
+              // The generator's own loss is never evaluated; mean squared error is
+              // the one that allows any output activation.
+              return FeedForwardNetwork{std::move(generator), Loss::mean_squared_error, seed};
+          }(),
+          // A distinct seed keeps the two networks from starting as scaled copies of
+          // each other's first layer.
+          FeedForwardNetwork{std::move(discriminator), Loss::binary_cross_entropy, seed + 1}} {}
 
 ConditionalGan::ConditionalGan(const std::size_t noise_size, const std::size_t class_count,
                                FeedForwardNetwork generator, FeedForwardNetwork discriminator)
@@ -300,16 +287,17 @@ double ConditionalGan::discriminator_loss(const LabeledDataset& real, const Feat
     for (std::size_t index = 0; index < noise.size(); ++index) {
         validate_noise(noise[index]);
         validate_label(fake_labels[index]);
-        fake_total += binary_cross_entropy(forward_fake(noise[index], fake_labels[index], workspace),
-                                           0.0);
+        fake_total +=
+            binary_cross_entropy(forward_fake(noise[index], fake_labels[index], workspace), 0.0);
     }
     return real_total / static_cast<double>(real.size()) +
            fake_total / static_cast<double>(noise.size());
 }
 
-std::vector<double> ConditionalGan::discriminator_gradient(
-    const LabeledDataset& real, const FeatureMatrix& noise,
-    const std::vector<std::size_t>& fake_labels, const double real_target) const {
+std::vector<double>
+ConditionalGan::discriminator_gradient(const LabeledDataset& real, const FeatureMatrix& noise,
+                                       const std::vector<std::size_t>& fake_labels,
+                                       const double real_target) const {
     if (real.empty() || noise.empty() || noise.size() != fake_labels.size()) {
         throw std::invalid_argument("real samples, noise, and fake labels must all be supplied");
     }
@@ -396,9 +384,8 @@ GanTrainingResult ConditionalGan::fit(const LabeledDataset& real, const GanTrain
                         .front();
                 batch_discriminator_loss += scale * binary_cross_entropy(logit, config.real_target);
                 real_score_total += scale * sigmoid(logit);
-                discriminator_.backpropagate_loss(real_targets, scale,
-                                                  &discriminator_gradient_buffer,
-                                                  workspace.discriminator);
+                discriminator_.backpropagate_loss(
+                    real_targets, scale, &discriminator_gradient_buffer, workspace.discriminator);
 
                 for (double& value : noise[position]) {
                     value = standard_normal(random_engine);
@@ -406,9 +393,8 @@ GanTrainingResult ConditionalGan::fit(const LabeledDataset& real, const GanTrain
                 const double fake_logit = forward_fake(noise[position], sample.label, workspace);
                 batch_discriminator_loss += scale * binary_cross_entropy(fake_logit, 0.0);
                 fake_score_total += scale * sigmoid(fake_logit);
-                discriminator_.backpropagate_loss(fake_targets, scale,
-                                                  &discriminator_gradient_buffer,
-                                                  workspace.discriminator);
+                discriminator_.backpropagate_loss(
+                    fake_targets, scale, &discriminator_gradient_buffer, workspace.discriminator);
             }
             discriminator_optimizer.compute_update(discriminator_gradient_buffer,
                                                    config.learning_rate, update);
@@ -453,57 +439,6 @@ GanTrainingResult ConditionalGan::fit(const LabeledDataset& real, const GanTrain
         result.generator_gradient_norm_per_epoch.push_back(gradient_norm_total / batch_count);
     }
     return result;
-}
-
-void ConditionalGan::save(const std::string& path) const {
-    std::ofstream stream{path};
-    if (!stream) {
-        throw std::runtime_error("cannot open checkpoint for writing: " + path);
-    }
-    stream << "ml_scratch_conditional_gan 1\n"
-           << "noise " << noise_size_ << '\n'
-           << "classes " << class_count_ << '\n';
-    generator_.save(stream, path);
-    discriminator_.save(stream, path);
-    if (!stream) {
-        throw std::runtime_error("failed while writing checkpoint: " + path);
-    }
-}
-
-ConditionalGan ConditionalGan::load(const std::string& path) {
-    std::ifstream stream{path};
-    if (!stream) {
-        throw std::runtime_error("cannot open checkpoint: " + path);
-    }
-    const auto expect = [&stream, &path](const std::string& keyword) {
-        std::string token;
-        if (!(stream >> token) || token != keyword) {
-            throw std::runtime_error("malformed checkpoint " + path + ": expected " + keyword);
-        }
-    };
-    const auto read_size = [&stream, &path] {
-        long long value = 0;
-        if (!(stream >> value) || value < 0) {
-            throw std::runtime_error("malformed checkpoint " + path + ": expected a size");
-        }
-        return static_cast<std::size_t>(value);
-    };
-
-    expect("ml_scratch_conditional_gan");
-    if (read_size() != 1) {
-        throw std::runtime_error("unsupported checkpoint version in " + path);
-    }
-    expect("noise");
-    const std::size_t noise_size = read_size();
-    expect("classes");
-    const std::size_t class_count = read_size();
-    if (noise_size == 0 || class_count == 0) {
-        throw std::runtime_error("checkpoint declares an empty noise or class size: " + path);
-    }
-    FeedForwardNetwork generator = FeedForwardNetwork::load(stream, path);
-    FeedForwardNetwork discriminator = FeedForwardNetwork::load(stream, path);
-    // The private constructor re-checks that the two networks fit together.
-    return ConditionalGan{noise_size, class_count, std::move(generator), std::move(discriminator)};
 }
 
 } // namespace ml_scratch

@@ -1,5 +1,6 @@
 #include "ml_scratch/neural_network.hpp"
 #include "ml_scratch/optimizer.hpp"
+#include "ml_scratch/utils/gradient_check.hpp"
 
 #include <cmath>
 #include <iostream>

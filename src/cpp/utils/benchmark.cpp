@@ -4,14 +4,14 @@
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
-#include <limits>
-#include <ostream>
-#include <string_view>
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <numeric>
+#include <ostream>
 #include <sstream>
 #include <stdexcept>
+#include <string_view>
 
 #if __has_include(<sys/resource.h>)
 #include <sys/resource.h>
@@ -51,8 +51,7 @@ double BenchmarkResult::median() const {
     std::vector<double> sorted = repetition_seconds;
     std::sort(sorted.begin(), sorted.end());
     const std::size_t middle = sorted.size() / 2;
-    return sorted.size() % 2 == 1 ? sorted[middle]
-                                  : 0.5 * (sorted[middle - 1] + sorted[middle]);
+    return sorted.size() % 2 == 1 ? sorted[middle] : 0.5 * (sorted[middle - 1] + sorted[middle]);
 }
 
 double BenchmarkResult::mean() const {
@@ -91,9 +90,8 @@ double BenchmarkResult::cold_ratio() const {
 
 namespace detail {
 
-BenchmarkResult run_benchmark(std::string name, const BenchmarkOptions& options,
-                              void* body_context, void (*run_once)(void*), void* reset_context,
-                              void (*reset)(void*)) {
+BenchmarkResult run_benchmark(std::string name, const BenchmarkOptions& options, void* body_context,
+                              void (*run_once)(void*), void* reset_context, void (*reset)(void*)) {
     if (options.repetitions == 0) {
         throw std::invalid_argument("a benchmark needs at least one repetition");
     }
@@ -130,9 +128,9 @@ BenchmarkResult run_benchmark(std::string name, const BenchmarkOptions& options,
             // Jump straight to an estimate of the right count rather than doubling blindly,
             // with a floor so a body faster than the clock's resolution still makes progress.
             const double factor = elapsed > 0.0 ? options.target_seconds / elapsed : 64.0;
-            iterations = std::max(iterations + 1,
-                                  static_cast<std::size_t>(static_cast<double>(iterations) *
-                                                           std::min(factor * 1.2, 64.0)));
+            iterations =
+                std::max(iterations + 1, static_cast<std::size_t>(static_cast<double>(iterations) *
+                                                                  std::min(factor * 1.2, 64.0)));
         }
     }
     result.iterations = iterations;
@@ -153,8 +151,7 @@ BenchmarkResult run_benchmark(std::string name, const BenchmarkOptions& options,
         for (std::size_t index = 0; index < iterations; ++index) {
             run_once(body_context);
         }
-        result.repetition_seconds.push_back(seconds_since(start) /
-                                            static_cast<double>(iterations));
+        result.repetition_seconds.push_back(seconds_since(start) / static_cast<double>(iterations));
     }
     return result;
 }
@@ -194,9 +191,8 @@ Environment current_environment() {
                                    std::to_string(__clang_patchlevel__);
 #elif defined(__GNUC__)
     environment.compiler = "gcc";
-    environment.compiler_version = std::to_string(__GNUC__) + "." +
-                                   std::to_string(__GNUC_MINOR__) + "." +
-                                   std::to_string(__GNUC_PATCHLEVEL__);
+    environment.compiler_version = std::to_string(__GNUC__) + "." + std::to_string(__GNUC_MINOR__) +
+                                   "." + std::to_string(__GNUC_PATCHLEVEL__);
 #elif defined(_MSC_VER)
     environment.compiler = "msvc";
     environment.compiler_version = std::to_string(_MSC_VER);

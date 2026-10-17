@@ -1,4 +1,5 @@
 #include "ml_scratch/neural_network.hpp"
+#include "ml_scratch/utils/gradient_check.hpp"
 
 #include <cmath>
 #include <filesystem>
@@ -183,7 +184,7 @@ void test_gradient_check_detects_a_wrong_gradient() {
                                            ml_scratch::Loss::binary_cross_entropy,
                                            7};
     auto analytic = network.gradient(xor_data);
-    const auto numerical = network.numerical_gradient(xor_data);
+    const auto numerical = ml_scratch::numerical_gradient(network, xor_data);
     require(ml_scratch::check_gradient(analytic, numerical).passed,
             "the correct gradient did not pass");
 
@@ -497,7 +498,7 @@ void test_input_validation() {
         },
         "a wrong target size was accepted");
     require_invalid_argument(
-        [&] { static_cast<void>(network.numerical_gradient(regression_data, 0.0)); },
+        [&] { static_cast<void>(ml_scratch::numerical_gradient(network, regression_data, 0.0)); },
         "a zero epsilon was accepted");
     require_invalid_argument(
         [] { static_cast<void>(ml_scratch::check_gradient({1.0}, {1.0, 2.0})); },

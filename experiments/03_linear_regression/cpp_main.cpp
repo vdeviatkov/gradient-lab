@@ -1,4 +1,5 @@
 #include "ml_scratch/linear_regression.hpp"
+#include "ml_scratch/utils/regression.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -32,7 +33,7 @@ struct OptimizerExperiment {
 
 int main() {
     ml_scratch::LinearRegression reference{1};
-    reference.fit_closed_form(training_data);
+    ml_scratch::fit_closed_form(reference, training_data);
 
     std::cout << "C++ linear regression experiment (seed=" << seed << ")\n"
               << std::fixed << std::setprecision(8)

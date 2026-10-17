@@ -1,6 +1,7 @@
 #include "ml_scratch/deterministic_random.hpp"
 #include "ml_scratch/gan.hpp"
 #include "ml_scratch/neural_network.hpp"
+#include "ml_scratch/utils/gradient_check.hpp"
 
 #include <cmath>
 #include <filesystem>
@@ -223,18 +224,19 @@ void test_stream_checkpoints_share_a_stream() {
                                           {3, 1, ml_scratch::Activation::identity}},
                                          ml_scratch::Loss::binary_cross_entropy,
                                          3};
-    ml_scratch::FeedForwardNetwork second{{{1, 2, ml_scratch::Activation::hyperbolic_tangent,
-                                            ml_scratch::Normalization::layer},
-                                           {2, 2, ml_scratch::Activation::sigmoid}},
-                                          ml_scratch::Loss::mean_squared_error,
-                                          4};
+    ml_scratch::FeedForwardNetwork second{
+        {{1, 2, ml_scratch::Activation::hyperbolic_tangent, ml_scratch::Normalization::layer},
+         {2, 2, ml_scratch::Activation::sigmoid}},
+        ml_scratch::Loss::mean_squared_error,
+        4};
     std::stringstream stream;
     first.save(stream, "first");
     second.save(stream, "second");
 
     const auto restored_first = ml_scratch::FeedForwardNetwork::load(stream, "first");
     const auto restored_second = ml_scratch::FeedForwardNetwork::load(stream, "second");
-    require(restored_first.layers() == first.layers() && restored_second.layers() == second.layers(),
+    require(restored_first.layers() == first.layers() &&
+                restored_second.layers() == second.layers(),
             "two networks written to one stream should both come back");
     require(restored_first.parameters() == first.parameters() &&
                 restored_second.parameters() == second.parameters(),
@@ -277,7 +279,8 @@ void test_construction_validation() {
     require_invalid_argument(
         [] {
             ml_scratch::ConditionalGan gan{
-                noise_size, class_count,
+                noise_size,
+                class_count,
                 {{noise_size, 6, ml_scratch::Activation::rectified_linear},
                  {6, sample_size, ml_scratch::Activation::sigmoid}},
                 small_discriminator()};
@@ -286,7 +289,9 @@ void test_construction_validation() {
     require_invalid_argument(
         [] {
             ml_scratch::ConditionalGan gan{
-                noise_size, class_count, small_generator(),
+                noise_size,
+                class_count,
+                small_generator(),
                 {{sample_size, 5, ml_scratch::Activation::leaky_rectified_linear},
                  {5, 1, ml_scratch::Activation::identity}}};
         },
@@ -294,7 +299,9 @@ void test_construction_validation() {
     require_invalid_argument(
         [] {
             ml_scratch::ConditionalGan gan{
-                noise_size, class_count, small_generator(),
+                noise_size,
+                class_count,
+                small_generator(),
                 {{sample_size + class_count, 5, ml_scratch::Activation::leaky_rectified_linear},
                  {5, 2, ml_scratch::Activation::identity}}};
         },
@@ -302,7 +309,9 @@ void test_construction_validation() {
     require_invalid_argument(
         [] {
             ml_scratch::ConditionalGan gan{
-                noise_size, class_count, small_generator(),
+                noise_size,
+                class_count,
+                small_generator(),
                 {{sample_size + class_count, 5, ml_scratch::Activation::leaky_rectified_linear},
                  {5, 1, ml_scratch::Activation::sigmoid}}};
         },
@@ -310,7 +319,9 @@ void test_construction_validation() {
     require_invalid_argument(
         [] {
             ml_scratch::ConditionalGan gan{
-                noise_size, class_count, small_generator(),
+                noise_size,
+                class_count,
+                small_generator(),
                 {{sample_size + class_count, 5, ml_scratch::Activation::leaky_rectified_linear,
                   ml_scratch::Normalization::batch},
                  {5, 1, ml_scratch::Activation::identity}}};
@@ -319,7 +330,8 @@ void test_construction_validation() {
     require_invalid_argument(
         [] {
             ml_scratch::ConditionalGan gan{
-                noise_size, class_count,
+                noise_size,
+                class_count,
                 {{noise_size + class_count, 6, ml_scratch::Activation::rectified_linear,
                   ml_scratch::Normalization::none, 0.5},
                  {6, sample_size, ml_scratch::Activation::sigmoid}},
@@ -357,8 +369,9 @@ void test_construction_validation() {
                              "a zero real target should be rejected");
     require_invalid_argument([&] { static_cast<void>(trainee.fit({{{0.1, 0.2}, 0}}, {})); },
                              "samples of the wrong size should be rejected");
-    require_invalid_argument([&] { static_cast<void>(trainee.fit({{{0.1, 0.2, 0.3, 0.4}, 2}}, {})); },
-                             "a dataset with more classes than the model should be rejected");
+    require_invalid_argument(
+        [&] { static_cast<void>(trainee.fit({{{0.1, 0.2, 0.3, 0.4}, 2}}, {})); },
+        "a dataset with more classes than the model should be rejected");
 }
 
 void test_generation_is_deterministic_and_conditioned() {
@@ -405,8 +418,8 @@ void test_generator_gradient_matches_finite_differences() {
     const auto noise = some_noise(6, 41);
     const std::vector<std::size_t> labels{0, 1, 1, 0, 0, 1};
 
-    for (const auto loss : {ml_scratch::GeneratorLoss::non_saturating,
-                            ml_scratch::GeneratorLoss::minimax}) {
+    for (const auto loss :
+         {ml_scratch::GeneratorLoss::non_saturating, ml_scratch::GeneratorLoss::minimax}) {
         const auto analytic = gan.generator_gradient(noise, labels, loss);
         require(analytic.size() == gan.generator().parameter_count(),
                 "the generator gradient covers the generator's parameters");
@@ -451,8 +464,8 @@ void test_discriminator_gradient_matches_finite_differences() {
                     static_cast<double>(real.size());
     }
     for (std::size_t index = 0; index < noise.size(); ++index) {
-        const double fake = gan.discriminate(gan.generate(noise[index], labels[index]),
-                                             labels[index]);
+        const double fake =
+            gan.discriminate(gan.generate(noise[index], labels[index]), labels[index]);
         expected += -std::log(1.0 - fake) / static_cast<double>(noise.size());
     }
     require_near(gan.discriminator_loss(real, noise, labels), expected, 1e-12,
@@ -502,8 +515,8 @@ void test_training_learns_a_conditional_distribution() {
     for (std::size_t index = 0; index < 400; ++index) {
         const std::size_t label = index % 2;
         const double center = label == 0 ? 0.2 : 0.8;
-        real.push_back({{center + 0.05 * random.gaussian(), center + 0.05 * random.gaussian()},
-                        label});
+        real.push_back(
+            {{center + 0.05 * random.gaussian(), center + 0.05 * random.gaussian()}, label});
     }
 
     ml_scratch::ConditionalGan gan{
@@ -548,7 +561,8 @@ void test_training_learns_a_conditional_distribution() {
         require(std::isfinite(result.discriminator_loss_per_epoch[epoch]) &&
                     std::isfinite(result.generator_loss_per_epoch[epoch]),
                 "losses should stay finite");
-        require(result.real_score_per_epoch[epoch] > 0.0 && result.real_score_per_epoch[epoch] < 1.0 &&
+        require(result.real_score_per_epoch[epoch] > 0.0 &&
+                    result.real_score_per_epoch[epoch] < 1.0 &&
                     result.fake_score_per_epoch[epoch] > 0.0 &&
                     result.fake_score_per_epoch[epoch] < 1.0,
                 "scores are probabilities");
@@ -582,9 +596,9 @@ void test_training_learns_a_conditional_distribution() {
 }
 
 void test_seed_reproducibility() {
-    const ml_scratch::LabeledDataset real{
-        {{0.9, 0.1, 0.8, 0.2}, 0}, {{0.8, 0.2, 0.9, 0.1}, 0}, {{0.1, 0.9, 0.2, 0.8}, 1},
-        {{0.2, 0.8, 0.1, 0.9}, 1}, {{0.7, 0.3, 0.7, 0.3}, 0}, {{0.3, 0.7, 0.3, 0.7}, 1}};
+    const ml_scratch::LabeledDataset real{{{0.9, 0.1, 0.8, 0.2}, 0}, {{0.8, 0.2, 0.9, 0.1}, 0},
+                                          {{0.1, 0.9, 0.2, 0.8}, 1}, {{0.2, 0.8, 0.1, 0.9}, 1},
+                                          {{0.7, 0.3, 0.7, 0.3}, 0}, {{0.3, 0.7, 0.3, 0.7}, 1}};
     ml_scratch::GanTrainingConfig config;
     config.epochs = 5;
     config.batch_size = 4;

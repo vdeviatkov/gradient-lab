@@ -1,6 +1,7 @@
 #include "ml_scratch/mnist.hpp"
 #include "ml_scratch/neural_network.hpp"
 #include "ml_scratch/softmax_regression.hpp"
+#include "ml_scratch/utils/gradient_check.hpp"
 
 #include <cmath>
 #include <filesystem>

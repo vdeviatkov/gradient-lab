@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ml_scratch/utils/classification_metrics.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -14,32 +16,6 @@ struct BinaryClassificationSample {
 };
 
 using BinaryClassificationDataset = std::vector<BinaryClassificationSample>;
-
-struct ConfusionMatrix {
-    std::size_t true_negatives{};
-    std::size_t false_positives{};
-    std::size_t false_negatives{};
-    std::size_t true_positives{};
-
-    bool operator==(const ConfusionMatrix&) const = default;
-};
-
-struct ClassificationMetrics {
-    ConfusionMatrix confusion;
-    double accuracy{};
-    double precision{};
-    double recall{};
-    double f1{};
-
-    bool operator==(const ClassificationMetrics&) const = default;
-};
-
-struct ThresholdSelectionResult {
-    double threshold;
-    ClassificationMetrics metrics;
-
-    bool operator==(const ThresholdSelectionResult&) const = default;
-};
 
 struct LogisticTrainingConfig {
     double learning_rate{0.1};
@@ -59,13 +35,6 @@ struct LogisticTrainingResult {
 
     bool operator==(const LogisticTrainingResult&) const = default;
 };
-
-[[nodiscard]] ClassificationMetrics classification_metrics(const std::vector<int>& targets,
-                                                           const std::vector<int>& predictions);
-
-[[nodiscard]] ThresholdSelectionResult
-select_threshold_for_f1(const std::vector<int>& targets, const std::vector<double>& probabilities,
-                        const std::vector<double>& candidate_thresholds);
 
 class BinaryLogisticRegression {
   public:

@@ -1,4 +1,5 @@
 #include "ml_scratch/linear_regression.hpp"
+#include "ml_scratch/utils/regression.hpp"
 
 #include <cmath>
 #include <iostream>
@@ -50,12 +51,13 @@ void require_exact_line(const ml_scratch::LinearRegression& model, const double 
 void test_closed_form_solution_and_metrics() {
     const auto dataset = make_exact_dataset();
     ml_scratch::LinearRegression model{2};
-    model.fit_closed_form(dataset);
+    ml_scratch::fit_closed_form(model, dataset);
 
     require_exact_line(model, 1e-12);
     require_near(model.predict({0.5, -0.5}), 3.5, 1e-12, "incorrect prediction");
     require_near(model.mean_squared_error(dataset), 0.0, 1e-24, "non-zero exact-fit MSE");
-    require_near(model.r_squared(dataset), 1.0, 1e-12, "incorrect exact-fit R-squared");
+    require_near(ml_scratch::r_squared(model, dataset), 1.0, 1e-12,
+                 "incorrect exact-fit R-squared");
 }
 
 void test_gradient_optimizers_agree_with_closed_form() {
@@ -106,16 +108,21 @@ void test_input_validation() {
                              "zero feature count was accepted");
 
     ml_scratch::LinearRegression model{2};
-    require_invalid_argument([&] { model.fit_closed_form({}); }, "empty dataset was accepted");
+    require_invalid_argument([&] { ml_scratch::fit_closed_form(model, {}); },
+                             "empty dataset was accepted");
     require_invalid_argument([&] { static_cast<void>(model.predict({1.0})); },
                              "wrong prediction shape was accepted");
-    require_invalid_argument([&] { model.fit_closed_form({{{1.0}, 2.0}}); },
+    require_invalid_argument([&] { ml_scratch::fit_closed_form(model, {{{1.0}, 2.0}}); },
                              "wrong training shape was accepted");
     require_invalid_argument(
-        [&] { model.fit_closed_form({{{1.0, 2.0}, std::numeric_limits<double>::infinity()}}); },
+        [&] {
+            ml_scratch::fit_closed_form(model,
+                                        {{{1.0, 2.0}, std::numeric_limits<double>::infinity()}});
+        },
         "non-finite target was accepted");
-    require_invalid_argument([&] { model.fit_closed_form({{{1.0, 2.0}, 1.0}, {{2.0, 4.0}, 2.0}}); },
-                             "singular design matrix was accepted");
+    require_invalid_argument(
+        [&] { ml_scratch::fit_closed_form(model, {{{1.0, 2.0}, 1.0}, {{2.0, 4.0}, 2.0}}); },
+        "singular design matrix was accepted");
 
     const auto dataset = make_exact_dataset();
     ml_scratch::RegressionTrainingConfig config;
@@ -132,8 +139,9 @@ void test_input_validation() {
                              "zero mini-batch size was accepted");
 
     const ml_scratch::RegressionDataset constant_targets{{{0.0, 0.0}, 1.0}, {{1.0, 1.0}, 1.0}};
-    require_invalid_argument([&] { static_cast<void>(model.r_squared(constant_targets)); },
-                             "R-squared accepted constant targets");
+    require_invalid_argument(
+        [&] { static_cast<void>(ml_scratch::r_squared(model, constant_targets)); },
+        "R-squared accepted constant targets");
 }
 
 } // namespace

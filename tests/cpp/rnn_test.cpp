@@ -2,6 +2,7 @@
 #include "ml_scratch/neural_network.hpp"
 #include "ml_scratch/rnn.hpp"
 #include "ml_scratch/text_corpus.hpp"
+#include "ml_scratch/utils/gradient_check.hpp"
 
 #include <cmath>
 #include <filesystem>
@@ -70,7 +71,8 @@ void test_forward_pass_by_hand() {
         return log_normalizer - (target == 0 ? z0 : z1);
     };
     const double expected = (step_loss(h1, 1) + step_loss(h2, 0)) / 2.0;
-    require_near(network.loss({0, 1, 0}), expected, 1e-14, "the loss should match the hand computation");
+    require_near(network.loss({0, 1, 0}), expected, 1e-14,
+                 "the loss should match the hand computation");
 
     // The distribution after reading 0, 1 is softmax over the logits at h2.
     const auto probabilities = network.predict({0, 1});
@@ -94,15 +96,17 @@ void test_gradient_matches_finite_differences() {
     const ml_scratch::TokenSequence ids{0, 3, 1, 4, 4, 2, 0, 1, 3};
 
     const auto analytic = network.gradient(ids);
-    const auto numerical = network.numerical_gradient(ids);
+    const auto numerical = ml_scratch::numerical_gradient(network, ids);
     const auto verdict = ml_scratch::check_gradient(analytic, numerical);
     require(verdict.passed, "backpropagation through time failed its gradient check");
 
     // From a non-zero initial state too, since training carries one across windows.
     const ml_scratch::CharRnn::State state{0.3, -0.7, 0.1, 0.9};
     const auto from_state = network.gradient(ids, state);
-    require(ml_scratch::check_gradient(from_state, network.numerical_gradient(ids, state)).passed,
-            "the gradient from a carried state failed its check");
+    require(
+        ml_scratch::check_gradient(from_state, ml_scratch::numerical_gradient(network, ids, state))
+            .passed,
+        "the gradient from a carried state failed its check");
     require(from_state != analytic, "the initial state should change the gradient");
 
     // Gradient reach: the last prediction's loss alone, differentiated with respect to the
@@ -147,10 +151,10 @@ void test_gated_cells_by_hand() {
     ml_scratch::CharRnn lstm{2, 1, 0, ml_scratch::RecurrentCell::lstm};
     require(lstm.state_size() == 2, "an LSTM carries h and c");
     require(lstm.parameter_count() == 4 * 2 + 4 * 1 + 4 + 2 + 2, "LSTM parameter count");
-    lstm.set_parameters({0.5, -0.5, 0.3, 0.1, -0.2, 0.4, 0.7, -0.3, // W_x
-                         0.6, 0.2, -0.4, 0.9,                       // W_h
-                         0.0, 1.0, 0.1, -0.1,                       // b
-                         1.0, -1.0, 0.0, 0.0});                     // W_hy, b_y
+    lstm.set_parameters({0.5, -0.5, 0.3,  0.1,  -0.2, 0.4, 0.7, -0.3, // W_x
+                         0.6, 0.2,  -0.4, 0.9,                        // W_h
+                         0.0, 1.0,  0.1,  -0.1,                       // b
+                         1.0, -1.0, 0.0,  0.0});                      // W_hy, b_y
     const auto sig = [](const double v) { return 1.0 / (1.0 + std::exp(-v)); };
     // Input id 1 from the zero state: h_{t-1} = 0, c_{t-1} = 0.
     const double i = sig(-0.5 + 0.0);
@@ -175,8 +179,8 @@ void test_gated_cells_by_hand() {
     ml_scratch::CharRnn gru{2, 1, 0, ml_scratch::RecurrentCell::gru};
     require(gru.state_size() == 1, "a GRU carries h alone");
     gru.set_parameters({0.5, -0.5, 0.3, 0.1, -0.2, 0.4, // W_x
-                        0.6, 0.2, -0.4,                  // W_h
-                        0.0, 0.1, -0.1,                  // b
+                        0.6, 0.2, -0.4,                 // W_h
+                        0.0, 0.1, -0.1,                 // b
                         1.0, -1.0, 0.0, 0.0});
     // Two steps, ids 1 then 0, so the second step has a non-zero previous state.
     const double r1 = sig(-0.5 + 0.0);
@@ -197,7 +201,8 @@ void test_gated_gradients_match_finite_differences() {
     for (const auto cell : {ml_scratch::RecurrentCell::lstm, ml_scratch::RecurrentCell::gru}) {
         ml_scratch::CharRnn network{5, 4, 3, cell};
         const std::string name = ml_scratch::recurrent_cell_name(cell);
-        require(ml_scratch::check_gradient(network.gradient(ids), network.numerical_gradient(ids))
+        require(ml_scratch::check_gradient(network.gradient(ids),
+                                           ml_scratch::numerical_gradient(network, ids))
                     .passed,
                 name + " backpropagation through time failed its gradient check");
         ml_scratch::CharRnn::State state(network.state_size());
@@ -205,7 +210,7 @@ void test_gated_gradients_match_finite_differences() {
             state[index] = 0.3 * static_cast<double>(index + 1) * (index % 2 == 0 ? 1.0 : -1.0);
         }
         require(ml_scratch::check_gradient(network.gradient(ids, state),
-                                           network.numerical_gradient(ids, state))
+                                           ml_scratch::numerical_gradient(network, ids, state))
                     .passed,
                 name + " gradient from a carried state failed its check");
         // Scoring in halves with the state carried must agree with scoring at once, which is
@@ -243,7 +248,8 @@ void test_gradient_clipping() {
     require(small == std::vector<double>{0.3, -0.4}, "a small gradient is left alone");
 
     std::vector<double> large{3.0, -4.0}; // norm 5
-    require_near(ml_scratch::clip_gradient(large, 1.0), 5.0, 1e-15, "the pre-clip norm is returned");
+    require_near(ml_scratch::clip_gradient(large, 1.0), 5.0, 1e-15,
+                 "the pre-clip norm is returned");
     require_near(norm(large), 1.0, 1e-15, "a large gradient is scaled to the threshold");
     require_near(large[0] / large[1], -0.75, 1e-15, "clipping preserves the direction");
     require_invalid_argument([&] { static_cast<void>(ml_scratch::clip_gradient(large, 0.0)); },
@@ -299,9 +305,9 @@ void test_training_learns_a_periodic_sequence() {
 // the random bit written three pairs earlier: r1 c1 r2 c2 ... with c_i = r_{i-3}. The random
 // bits cannot be predicted, so the best possible loss is ln 2 / 2 = 0.347 nats: zero on the
 // copies, ln 2 on the random bits. Reaching it means recalling a bit that entered six steps
-// before, which nothing in the stream rewards until the gradient spans those steps. A periodic pattern
-// would not do here: a carried hidden state can learn to count with a window of one, because
-// each step's loss already tells the recurrence which state to be in next.
+// before, which nothing in the stream rewards until the gradient spans those steps. A periodic
+// pattern would not do here: a carried hidden state can learn to count with a window of one,
+// because each step's loss already tells the recurrence which state to be in next.
 void test_truncation_limits_what_is_learned() {
     constexpr std::size_t delay = 3;
     ml_scratch::DeterministicRandom random{5};
@@ -374,12 +380,11 @@ void test_seed_reproducibility_and_checkpoints() {
     const auto first_result = first.fit(ids, config);
     const auto second_result = second.fit(ids, config);
     // Everything but the throughput, which is wall-clock time.
-    require(first_result.loss_per_epoch == second_result.loss_per_epoch &&
-                first_result.max_gradient_norm_per_epoch ==
-                    second_result.max_gradient_norm_per_epoch &&
-                first_result.mean_gradient_norm_per_epoch ==
-                    second_result.mean_gradient_norm_per_epoch,
-            "training is deterministic");
+    require(
+        first_result.loss_per_epoch == second_result.loss_per_epoch &&
+            first_result.max_gradient_norm_per_epoch == second_result.max_gradient_norm_per_epoch &&
+            first_result.mean_gradient_norm_per_epoch == second_result.mean_gradient_norm_per_epoch,
+        "training is deterministic");
     require(first.parameters() == second.parameters(), "trained networks agree");
 
     const std::string path =
@@ -412,8 +417,10 @@ void test_seed_reproducibility_and_checkpoints() {
 }
 
 void test_input_validation() {
-    require_invalid_argument([] { ml_scratch::CharRnn bad{1, 4}; }, "a one-character vocabulary is useless");
-    require_invalid_argument([] { ml_scratch::CharRnn bad{4, 0}; }, "a zero hidden size is rejected");
+    require_invalid_argument([] { ml_scratch::CharRnn bad{1, 4}; },
+                             "a one-character vocabulary is useless");
+    require_invalid_argument([] { ml_scratch::CharRnn bad{4, 0}; },
+                             "a zero hidden size is rejected");
     ml_scratch::CharRnn network{4, 3, 0};
     require_invalid_argument([&] { static_cast<void>(network.loss({0})); },
                              "a single id predicts nothing");

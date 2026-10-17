@@ -22,11 +22,6 @@ void require_threshold(const double threshold) {
     }
 }
 
-double safe_ratio(const std::size_t numerator, const std::size_t denominator) {
-    return denominator == 0 ? 0.0
-                            : static_cast<double>(numerator) / static_cast<double>(denominator);
-}
-
 double sigmoid(const double score) {
     if (score >= 0.0) {
         return 1.0 / (1.0 + std::exp(-score));
@@ -40,88 +35,6 @@ double softplus(const double value) {
 }
 
 } // namespace
-
-ClassificationMetrics classification_metrics(const std::vector<int>& targets,
-                                             const std::vector<int>& predictions) {
-    if (targets.empty()) {
-        throw std::invalid_argument("targets must not be empty");
-    }
-    if (targets.size() != predictions.size()) {
-        throw std::invalid_argument("targets and predictions must have equal sizes");
-    }
-
-    ConfusionMatrix confusion;
-    for (std::size_t index = 0; index < targets.size(); ++index) {
-        require_binary_label(targets[index], "targets must contain only zero or one");
-        require_binary_label(predictions[index], "predictions must contain only zero or one");
-        if (targets[index] == 1 && predictions[index] == 1) {
-            ++confusion.true_positives;
-        } else if (targets[index] == 0 && predictions[index] == 0) {
-            ++confusion.true_negatives;
-        } else if (targets[index] == 0) {
-            ++confusion.false_positives;
-        } else {
-            ++confusion.false_negatives;
-        }
-    }
-
-    const std::size_t correct = confusion.true_positives + confusion.true_negatives;
-    const double accuracy = safe_ratio(correct, targets.size());
-    const double precision =
-        safe_ratio(confusion.true_positives, confusion.true_positives + confusion.false_positives);
-    const double recall =
-        safe_ratio(confusion.true_positives, confusion.true_positives + confusion.false_negatives);
-    const double f1 =
-        (precision + recall) == 0.0 ? 0.0 : 2.0 * precision * recall / (precision + recall);
-    return {confusion, accuracy, precision, recall, f1};
-}
-
-ThresholdSelectionResult select_threshold_for_f1(const std::vector<int>& targets,
-                                                 const std::vector<double>& probabilities,
-                                                 const std::vector<double>& candidate_thresholds) {
-    if (targets.empty()) {
-        throw std::invalid_argument("targets must not be empty");
-    }
-    if (targets.size() != probabilities.size()) {
-        throw std::invalid_argument("targets and probabilities must have equal sizes");
-    }
-    if (candidate_thresholds.empty()) {
-        throw std::invalid_argument("candidate_thresholds must not be empty");
-    }
-    for (const int target : targets) {
-        require_binary_label(target, "targets must contain only zero or one");
-    }
-    for (const double probability : probabilities) {
-        if (!std::isfinite(probability) || probability < 0.0 || probability > 1.0) {
-            throw std::invalid_argument("probabilities must be finite and between zero and one");
-        }
-    }
-
-    bool has_best = false;
-    ThresholdSelectionResult best{};
-    for (const double threshold : candidate_thresholds) {
-        require_threshold(threshold);
-        std::vector<int> predictions;
-        predictions.reserve(probabilities.size());
-        for (const double probability : probabilities) {
-            predictions.push_back(probability >= threshold ? 1 : 0);
-        }
-        const ClassificationMetrics metrics = classification_metrics(targets, predictions);
-
-        const bool better_f1 = !has_best || metrics.f1 > best.metrics.f1;
-        const bool tied_f1 = has_best && metrics.f1 == best.metrics.f1;
-        const double distance = std::abs(threshold - 0.5);
-        const double best_distance = std::abs(best.threshold - 0.5);
-        const bool better_tie =
-            tied_f1 &&
-            (distance < best_distance || (distance == best_distance && threshold < best.threshold));
-        if (better_f1 || better_tie) {
-            best = {threshold, metrics};
-            has_best = true;
-        }
-    }
-    return best;
-}
 
 BinaryLogisticRegression::BinaryLogisticRegression(const std::size_t feature_count)
     : weights_(feature_count, 0.0) {
@@ -185,21 +98,6 @@ double BinaryLogisticRegression::binary_cross_entropy(const BinaryClassification
         loss_sum += sample.target == 1 ? positive_class_weight * softplus(-score) : softplus(score);
     }
     return loss_sum / static_cast<double>(dataset.size());
-}
-
-ClassificationMetrics BinaryLogisticRegression::evaluate(const BinaryClassificationDataset& dataset,
-                                                         const double threshold) const {
-    validate_dataset(dataset);
-    require_threshold(threshold);
-    std::vector<int> targets;
-    std::vector<int> predictions;
-    targets.reserve(dataset.size());
-    predictions.reserve(dataset.size());
-    for (const auto& sample : dataset) {
-        targets.push_back(sample.target);
-        predictions.push_back(predict(sample.features, threshold));
-    }
-    return classification_metrics(targets, predictions);
 }
 
 LogisticTrainingResult BinaryLogisticRegression::fit(const BinaryClassificationDataset& dataset,

@@ -1,4 +1,5 @@
 #include "ml_scratch/neural_network.hpp"
+#include "ml_scratch/utils/gradient_check.hpp"
 
 #include <cmath>
 #include <filesystem>
@@ -348,8 +349,9 @@ void test_training_updates_normalization_parameters() {
         bool scale_moved = false;
         for (std::size_t index = 0; index < before.size(); ++index) {
             require_near(after[index], before[index] - config.learning_rate * gradient[index],
-                         1e-12, "a gradient step should touch every parameter, normalization "
-                                "scale and shift included");
+                         1e-12,
+                         "a gradient step should touch every parameter, normalization "
+                         "scale and shift included");
             if (index >= scale_offset && index < scale_offset + 12 &&
                 after[index] != before[index]) {
                 scale_moved = true;

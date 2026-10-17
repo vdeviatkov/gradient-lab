@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ml_scratch/gradient.hpp"
 #include "ml_scratch/optimizer.hpp"
 #include "ml_scratch/text_corpus.hpp"
 
@@ -107,10 +108,6 @@ class CharRnn {
     // through the whole sequence — the truncation window is whatever the caller passes in.
     [[nodiscard]] std::vector<double> gradient(const TokenSequence& ids,
                                                const State& state = {}) const;
-    // The same by central differences, to verify `gradient`.
-    [[nodiscard]] std::vector<double> numerical_gradient(const TokenSequence& ids,
-                                                         const State& state = {},
-                                                         double epsilon = 1e-5) const;
 
     // How far back a single prediction's gradient reaches. Takes the loss of the LAST prediction
     // alone and returns, for lag = 0, 1, ..., the Euclidean norm of its gradient with respect to
@@ -143,10 +140,10 @@ class CharRnn {
   private:
     // Everything one backward pass needs from the forward pass, sized for one window and reused.
     struct Workspace {
-        std::vector<double> hidden;        // [step][unit], h_t
-        std::vector<double> cell;          // [step][unit], c_t; LSTM only
-        std::vector<double> gates;         // [step][gate row], the activated gate values
-        std::vector<double> extra;         // [step][unit], tanh(c_t) for the LSTM, W_hn h_{t-1} for the GRU
+        std::vector<double> hidden; // [step][unit], h_t
+        std::vector<double> cell;   // [step][unit], c_t; LSTM only
+        std::vector<double> gates;  // [step][gate row], the activated gate values
+        std::vector<double> extra; // [step][unit], tanh(c_t) for the LSTM, W_hn h_{t-1} for the GRU
         std::vector<double> probabilities; // [step][id], softmax(z_t)
         std::vector<double> hidden_delta;  // dL/dh_t for the step being visited
         std::vector<double> cell_delta;    // dL/dc_t carried from the step after; LSTM only
@@ -169,8 +166,8 @@ class CharRnn {
     // the step's caches; and its backward, which reads `hidden_delta` (dL/dh_t) and `cell_delta`
     // (dL/dc_t carried in), accumulates the parameter gradient, and leaves dL/dh_{t-1} and
     // dL/dc_{t-1} in the same two buffers.
-    void step_forward(std::size_t input, const double* previous_hidden,
-                      const double* previous_cell, std::size_t step, Workspace& workspace) const;
+    void step_forward(std::size_t input, const double* previous_hidden, const double* previous_cell,
+                      std::size_t step, Workspace& workspace) const;
     void step_backward(std::size_t input, const double* previous_hidden,
                        const double* previous_cell, std::size_t step, std::vector<double>& flat,
                        Workspace& workspace) const;
@@ -201,10 +198,5 @@ class CharRnn {
     RecurrentCell cell_;
     std::vector<double> parameters_;
 };
-
-// Scales `gradient` down to Euclidean norm `max_norm` if it is larger, and returns the norm it
-// had before. A gradient at or below the threshold is left exactly as it was; an infinite
-// threshold only measures.
-double clip_gradient(std::vector<double>& gradient, double max_norm);
 
 } // namespace ml_scratch

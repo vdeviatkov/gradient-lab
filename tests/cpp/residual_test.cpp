@@ -1,6 +1,7 @@
 #include "ml_scratch/cifar10.hpp"
 #include "ml_scratch/convolution.hpp"
 #include "ml_scratch/neural_network.hpp"
+#include "ml_scratch/utils/gradient_check.hpp"
 
 #include <cmath>
 #include <filesystem>

@@ -64,20 +64,6 @@ DatasetShape validate_labeled_dataset(const LabeledDataset& dataset) {
     return shape;
 }
 
-std::vector<std::size_t> class_counts(const LabeledDataset& dataset,
-                                      const std::size_t class_count) {
-    const DatasetShape shape = validate_labeled_dataset(dataset);
-    if (shape.class_count > class_count) {
-        throw std::invalid_argument("dataset contains a label outside the class count");
-    }
-
-    std::vector<std::size_t> counts(class_count, 0);
-    for (const auto& sample : dataset) {
-        ++counts[sample.label];
-    }
-    return counts;
-}
-
 SupervisedShape validate_supervised_dataset(const SupervisedDataset& dataset) {
     if (dataset.empty()) {
         throw std::invalid_argument("dataset must not be empty");
@@ -109,25 +95,6 @@ SupervisedShape validate_supervised_dataset(const SupervisedDataset& dataset) {
         }
     }
     return shape;
-}
-
-SupervisedDataset to_one_hot(const LabeledDataset& dataset, const std::size_t class_count) {
-    const DatasetShape shape = validate_labeled_dataset(dataset);
-    if (shape.class_count > class_count) {
-        throw std::invalid_argument("dataset contains a label outside the class count");
-    }
-    if (class_count == 0) {
-        throw std::invalid_argument("class_count must be positive");
-    }
-
-    SupervisedDataset encoded;
-    encoded.reserve(dataset.size());
-    for (const auto& sample : dataset) {
-        std::vector<double> targets(class_count, 0.0);
-        targets[sample.label] = 1.0;
-        encoded.push_back({sample.features, std::move(targets)});
-    }
-    return encoded;
 }
 
 double squared_euclidean_distance(const std::vector<double>& left,

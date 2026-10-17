@@ -1,30 +1,13 @@
 #pragma once
 
 #include "ml_scratch/dataset.hpp"
+#include "ml_scratch/utils/classification_metrics.hpp"
 
 #include <cstddef>
 #include <cstdint>
 #include <vector>
 
 namespace ml_scratch {
-
-using ConfusionCounts = std::vector<std::vector<std::size_t>>;
-
-struct MulticlassMetrics {
-    double accuracy{};
-    // Unweighted means over classes, so a rare class counts as much as a common one.
-    double macro_precision{};
-    double macro_recall{};
-    double macro_f1{};
-    std::vector<double> per_class_precision;
-    std::vector<double> per_class_recall;
-    std::vector<double> per_class_f1;
-
-    bool operator==(const MulticlassMetrics&) const = default;
-};
-
-// confusion[actual][predicted]. A ratio with a zero denominator is defined as zero.
-[[nodiscard]] MulticlassMetrics multiclass_metrics(const ConfusionCounts& confusion);
 
 struct SoftmaxTrainingConfig {
     double learning_rate{0.1};

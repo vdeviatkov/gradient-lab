@@ -1,12 +1,12 @@
 #include "ml_scratch/transformer.hpp"
 
-#include "ml_scratch/rnn.hpp"
+#include "transformer_workspace.hpp"
+
+#include "ml_scratch/gradient.hpp"
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <fstream>
-#include <iomanip>
 #include <limits>
 #include <stdexcept>
 
@@ -103,45 +103,6 @@ struct CharTransformer::Offsets {
     std::size_t down;
     std::size_t down_bias;
     std::size_t distance_bias; // relative position bias, present only when configured
-};
-
-struct CharTransformer::Workspace {
-    // Per block, [position][dimension] unless noted.
-    struct Block {
-        std::vector<double> residual;          // the stream entering the block
-        std::vector<double> norm1;             // standardized values
-        std::vector<double> norm1_inverse;     // [position]
-        std::vector<double> attention_input;   // gain * norm1 + bias
-        std::vector<double> query;
-        std::vector<double> key;
-        std::vector<double> value;
-        std::vector<double> attention;         // [head][query][key]
-        std::vector<double> context;           // concatenated heads
-        std::vector<double> after_attention;   // residual + context W_o^T
-        std::vector<double> norm2;
-        std::vector<double> norm2_inverse;
-        std::vector<double> feed_forward_input;
-        std::vector<double> hidden_pre;        // [position][feed_forward]
-        std::vector<double> hidden;            // relu of the above
-    };
-    std::vector<Block> blocks;
-    std::vector<double> final_residual;
-    std::vector<double> final_norm;
-    std::vector<double> final_inverse;
-    std::vector<double> final_output;
-    std::vector<double> logits;        // [position][id]
-    std::vector<double> probabilities; // [position][id]
-    // Backward scratch.
-    std::vector<double> d_residual;
-    std::vector<double> d_after_attention;
-    std::vector<double> d_input;
-    std::vector<double> d_hidden;
-    std::vector<double> d_context;
-    std::vector<double> d_query;
-    std::vector<double> d_key;
-    std::vector<double> d_value;
-    std::vector<double> d_scores;
-    std::vector<double> scratch;
 };
 
 CharTransformer::CharTransformer(TransformerConfig config, const std::uint32_t seed)
@@ -270,7 +231,8 @@ std::size_t CharTransformer::output_bias_offset() const noexcept {
 
 void CharTransformer::validate_ids(const TokenSequence& ids, const bool for_prediction) const {
     const std::size_t minimum = for_prediction ? 1 : 2;
-    const std::size_t maximum = for_prediction ? config_.context_length : config_.context_length + 1;
+    const std::size_t maximum =
+        for_prediction ? config_.context_length : config_.context_length + 1;
     if (ids.size() < minimum) {
         throw std::invalid_argument("the sequence is too short");
     }
@@ -382,9 +344,9 @@ double CharTransformer::forward(const TokenSequence& ids, const std::size_t step
             }
         }
         // Output projection with the residual, then the feed-forward network with its own.
-        std::vector<double>& next =
-            layer + 1 < config_.layers ? workspace.blocks[layer + 1].residual
-                                       : workspace.final_residual;
+        std::vector<double>& next = layer + 1 < config_.layers
+                                        ? workspace.blocks[layer + 1].residual
+                                        : workspace.final_residual;
         std::vector<double> projected(D);
         for (std::size_t i = 0; i < steps; ++i) {
             project(block.context.data() + i * D, parameters + at.output, D, D, projected.data());
@@ -656,46 +618,6 @@ std::vector<double> CharTransformer::gradient(const TokenSequence& ids) const {
     return flat;
 }
 
-std::vector<double> CharTransformer::numerical_gradient(const TokenSequence& ids,
-                                                        const double epsilon) const {
-    validate_ids(ids, false);
-    CharTransformer probe = *this;
-    std::vector<double> numerical(parameters_.size(), 0.0);
-    for (std::size_t index = 0; index < parameters_.size(); ++index) {
-        const double original = parameters_[index];
-        probe.parameters_[index] = original + epsilon;
-        const double above = probe.loss(ids);
-        probe.parameters_[index] = original - epsilon;
-        const double below = probe.loss(ids);
-        probe.parameters_[index] = original;
-        numerical[index] = (above - below) / (2.0 * epsilon);
-    }
-    return numerical;
-}
-
-std::vector<std::vector<std::vector<std::vector<double>>>>
-CharTransformer::attention_weights(const TokenSequence& ids) const {
-    validate_ids(ids, true);
-    Workspace workspace;
-    const std::size_t steps = ids.size();
-    forward(ids, steps, workspace, false);
-    std::vector<std::vector<std::vector<std::vector<double>>>> weights(config_.layers);
-    for (std::size_t layer = 0; layer < config_.layers; ++layer) {
-        weights[layer].resize(config_.heads);
-        for (std::size_t head = 0; head < config_.heads; ++head) {
-            weights[layer][head].assign(steps, std::vector<double>(steps, 0.0));
-            const double* attention =
-                workspace.blocks[layer].attention.data() + head * steps * steps;
-            for (std::size_t i = 0; i < steps; ++i) {
-                for (std::size_t j = 0; j <= i; ++j) {
-                    weights[layer][head][i][j] = attention[i * steps + j];
-                }
-            }
-        }
-    }
-    return weights;
-}
-
 namespace {
 
 void validate_training_config(const TransformerTrainingConfig& config) {
@@ -766,9 +688,9 @@ TransformerTrainingResult CharTransformer::fit(const TokenSequence& train,
                 batch_loss += forward(window, T, workspace, true);
                 backward(window, T, scale, flat, workspace);
             }
-            const double norm = clip_gradient(
-                flat, config.clip_norm > 0.0 ? config.clip_norm
-                                             : std::numeric_limits<double>::infinity());
+            const double norm = clip_gradient(flat, config.clip_norm > 0.0
+                                                        ? config.clip_norm
+                                                        : std::numeric_limits<double>::infinity());
             if (!std::isfinite(norm)) {
                 throw std::runtime_error("training diverged to a non-finite gradient");
             }
@@ -875,87 +797,6 @@ void CharTransformer::subtract_update(const std::vector<double>& update) {
     for (std::size_t index = 0; index < parameters_.size(); ++index) {
         parameters_[index] -= update[index];
     }
-}
-
-void CharTransformer::save(const std::string& path) const {
-    std::ofstream stream{path};
-    if (!stream) {
-        throw std::runtime_error("cannot open checkpoint for writing: " + path);
-    }
-    stream << "ml_scratch_char_transformer 1\n"
-           << "vocabulary " << config_.vocabulary_size << '\n'
-           << "context " << config_.context_length << '\n'
-           << "model " << config_.model_size << '\n'
-           << "heads " << config_.heads << '\n'
-           << "layers " << config_.layers << '\n'
-           << "feed_forward " << config_.feed_forward_size << '\n'
-           << "positional " << (config_.positional_encoding ? 1 : 0) << '\n'
-           << "relative_bias " << (config_.relative_position_bias ? 1 : 0) << '\n'
-           << "parameters " << parameters_.size() << '\n'
-           << std::setprecision(17);
-    for (const double value : parameters_) {
-        stream << value << '\n';
-    }
-    if (!stream) {
-        throw std::runtime_error("failed while writing checkpoint: " + path);
-    }
-}
-
-CharTransformer CharTransformer::load(const std::string& path) {
-    std::ifstream stream{path};
-    if (!stream) {
-        throw std::runtime_error("cannot open checkpoint: " + path);
-    }
-    const auto expect = [&stream, &path](const std::string& keyword) {
-        std::string token;
-        if (!(stream >> token) || token != keyword) {
-            throw std::runtime_error("malformed checkpoint " + path + ": expected " + keyword);
-        }
-    };
-    const auto read_size = [&stream, &path] {
-        long long value = 0;
-        if (!(stream >> value) || value < 0) {
-            throw std::runtime_error("malformed checkpoint " + path + ": expected a size");
-        }
-        return static_cast<std::size_t>(value);
-    };
-    expect("ml_scratch_char_transformer");
-    if (read_size() != 1) {
-        throw std::runtime_error("unsupported checkpoint version in " + path);
-    }
-    TransformerConfig config{};
-    expect("vocabulary");
-    config.vocabulary_size = read_size();
-    expect("context");
-    config.context_length = read_size();
-    expect("model");
-    config.model_size = read_size();
-    expect("heads");
-    config.heads = read_size();
-    expect("layers");
-    config.layers = read_size();
-    expect("feed_forward");
-    config.feed_forward_size = read_size();
-    expect("positional");
-    config.positional_encoding = read_size() != 0;
-    expect("relative_bias");
-    config.relative_position_bias = read_size() != 0;
-    // The constructor re-validates the architecture.
-    CharTransformer network{config};
-    expect("parameters");
-    const std::size_t count = read_size();
-    if (count != network.parameter_count()) {
-        throw std::runtime_error("checkpoint parameter count does not match its architecture: " +
-                                 path);
-    }
-    std::vector<double> values(count, 0.0);
-    for (double& value : values) {
-        if (!(stream >> value)) {
-            throw std::runtime_error("truncated checkpoint: " + path);
-        }
-    }
-    network.set_parameters(values);
-    return network;
 }
 
 } // namespace ml_scratch

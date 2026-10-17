@@ -95,30 +95,6 @@ FeatureMatrix initialize_plus_plus(const FeatureMatrix& data, const std::size_t 
 
 } // namespace
 
-double cluster_purity(const std::vector<std::size_t>& assignments,
-                      const std::vector<std::size_t>& true_labels) {
-    if (assignments.empty()) {
-        throw std::invalid_argument("assignments must not be empty");
-    }
-    if (assignments.size() != true_labels.size()) {
-        throw std::invalid_argument("assignments and true_labels must have equal sizes");
-    }
-
-    const std::size_t cluster_count = *std::max_element(assignments.begin(), assignments.end()) + 1;
-    const std::size_t label_count = *std::max_element(true_labels.begin(), true_labels.end()) + 1;
-    std::vector<std::vector<std::size_t>> counts(cluster_count,
-                                                 std::vector<std::size_t>(label_count, 0));
-    for (std::size_t index = 0; index < assignments.size(); ++index) {
-        ++counts[assignments[index]][true_labels[index]];
-    }
-
-    std::size_t majority_total = 0;
-    for (const auto& cluster_counts : counts) {
-        majority_total += *std::max_element(cluster_counts.begin(), cluster_counts.end());
-    }
-    return static_cast<double>(majority_total) / static_cast<double>(assignments.size());
-}
-
 KMeans::KMeans(const std::size_t cluster_count) : cluster_count_(cluster_count) {
     if (cluster_count == 0) {
         throw std::invalid_argument("cluster_count must be positive");

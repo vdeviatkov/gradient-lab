@@ -45,10 +45,9 @@ class LinearRegression {
 
     [[nodiscard]] double predict(const std::vector<double>& features) const;
     [[nodiscard]] double mean_squared_error(const RegressionDataset& dataset) const;
-    [[nodiscard]] double r_squared(const RegressionDataset& dataset) const;
 
-    // Solves (X^T X) theta = X^T y with an explicit, pivoted Gaussian elimination.
-    void fit_closed_form(const RegressionDataset& dataset);
+    // Explicit parameter access for reference solvers and controlled comparisons.
+    void set_parameters(const std::vector<double>& weights, double bias);
     RegressionTrainingResult fit(const RegressionDataset& dataset,
                                  const RegressionTrainingConfig& config = {});
 

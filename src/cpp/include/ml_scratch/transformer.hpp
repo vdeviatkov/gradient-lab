@@ -88,8 +88,6 @@ class CharTransformer {
     [[nodiscard]] std::vector<double> predict(const TokenSequence& ids) const;
 
     [[nodiscard]] std::vector<double> gradient(const TokenSequence& ids) const;
-    [[nodiscard]] std::vector<double> numerical_gradient(const TokenSequence& ids,
-                                                         double epsilon = 1e-5) const;
 
     // The attention weights a forward pass over `ids` produces: [layer][head][query][key], with
     // zeros above the diagonal where the causal mask applies.

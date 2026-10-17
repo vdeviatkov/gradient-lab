@@ -1,6 +1,7 @@
 #include "ml_scratch/dataset.hpp"
 #include "ml_scratch/deterministic_random.hpp"
 #include "ml_scratch/neural_network.hpp"
+#include "ml_scratch/utils/gradient_check.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -204,7 +205,8 @@ int main() {
     double forward_at_1e5 = 1.0;
     for (const double epsilon : {1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10}) {
         const double central =
-            ml_scratch::check_gradient(analytic, probe.numerical_gradient(gradient_data, epsilon))
+            ml_scratch::check_gradient(
+                analytic, ml_scratch::numerical_gradient(probe, gradient_data, epsilon))
                 .relative_error;
         const double forward =
             ml_scratch::check_gradient(analytic,
@@ -229,8 +231,8 @@ int main() {
     // A checker that never fails proves nothing, so corrupt a known-good gradient.
     std::vector<double> corrupted = analytic;
     corrupted[7] *= 1.001;
-    const auto detection =
-        ml_scratch::check_gradient(corrupted, probe.numerical_gradient(gradient_data, 1e-5));
+    const auto detection = ml_scratch::check_gradient(
+        corrupted, ml_scratch::numerical_gradient(probe, gradient_data, 1e-5));
     std::cout << "\ndetection of a deliberate 0.1% error in parameter 7: "
               << (detection.passed ? "MISSED" : "caught") << ", ratio=" << std::scientific
               << std::setprecision(3) << detection.relative_error << std::defaultfloat

@@ -587,8 +587,12 @@ project smoke test.
 
 ## C++ build
 
-The C++20 project is standard-library-only. It builds a reusable `ml_scratch_cpp` library, nineteen
-experiment executables, and CTest executables without downloading a testing framework. The tests
+The C++20 project is standard-library-only. It builds `ml_scratch_cpp` for the algorithms and
+`ml_scratch_utils` for experiment support, nineteen experiment executables, and CTest executables
+without downloading a testing framework. `src/cpp/src/` contains training, inference, and the
+shared operations they need; `src/cpp/utils/` contains reference solvers, evaluation, numerical
+gradient checks, checkpoint I/O, data preparation, and reporting. The utilities link the core;
+the core does not link the utilities. See [the C++ layout](docs/design/cpp_layout.md). The tests
 never need a downloaded dataset: the IDX reader is exercised against small files the test writes
 itself.
 

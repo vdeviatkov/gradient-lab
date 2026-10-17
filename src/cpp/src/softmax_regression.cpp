@@ -8,68 +8,6 @@
 #include <utility>
 
 namespace ml_scratch {
-namespace {
-
-double safe_ratio(const std::size_t numerator, const std::size_t denominator) {
-    return denominator == 0 ? 0.0
-                            : static_cast<double>(numerator) / static_cast<double>(denominator);
-}
-
-} // namespace
-
-MulticlassMetrics multiclass_metrics(const ConfusionCounts& confusion) {
-    if (confusion.empty()) {
-        throw std::invalid_argument("confusion matrix must not be empty");
-    }
-    for (const auto& row : confusion) {
-        if (row.size() != confusion.size()) {
-            throw std::invalid_argument("confusion matrix must be square");
-        }
-    }
-
-    const std::size_t classes = confusion.size();
-    MulticlassMetrics metrics;
-    metrics.per_class_precision.assign(classes, 0.0);
-    metrics.per_class_recall.assign(classes, 0.0);
-    metrics.per_class_f1.assign(classes, 0.0);
-
-    std::size_t correct = 0;
-    std::size_t total = 0;
-    for (std::size_t actual = 0; actual < classes; ++actual) {
-        correct += confusion[actual][actual];
-        for (const std::size_t count : confusion[actual]) {
-            total += count;
-        }
-    }
-    if (total == 0) {
-        throw std::invalid_argument("confusion matrix must contain at least one sample");
-    }
-    metrics.accuracy = safe_ratio(correct, total);
-
-    for (std::size_t label = 0; label < classes; ++label) {
-        std::size_t predicted_total = 0;
-        std::size_t actual_total = 0;
-        for (std::size_t other = 0; other < classes; ++other) {
-            predicted_total += confusion[other][label];
-            actual_total += confusion[label][other];
-        }
-        const double precision = safe_ratio(confusion[label][label], predicted_total);
-        const double recall = safe_ratio(confusion[label][label], actual_total);
-        metrics.per_class_precision[label] = precision;
-        metrics.per_class_recall[label] = recall;
-        metrics.per_class_f1[label] =
-            (precision + recall) == 0.0 ? 0.0 : 2.0 * precision * recall / (precision + recall);
-
-        metrics.macro_precision += precision;
-        metrics.macro_recall += recall;
-        metrics.macro_f1 += metrics.per_class_f1[label];
-    }
-    const auto class_scale = static_cast<double>(classes);
-    metrics.macro_precision /= class_scale;
-    metrics.macro_recall /= class_scale;
-    metrics.macro_f1 /= class_scale;
-    return metrics;
-}
 
 SoftmaxRegression::SoftmaxRegression(const std::size_t feature_count, const std::size_t class_count)
     : feature_count_(feature_count), weights_(class_count, std::vector<double>(feature_count, 0.0)),
@@ -172,30 +110,6 @@ double SoftmaxRegression::cross_entropy(const LabeledDataset& dataset,
         loss += 0.5 * l2_regularization * squared_norm;
     }
     return loss;
-}
-
-double SoftmaxRegression::accuracy(const LabeledDataset& dataset) const {
-    validate_dataset(dataset);
-    std::size_t correct = 0;
-    for (const auto& sample : dataset) {
-        if (predict(sample.features) == sample.label) {
-            ++correct;
-        }
-    }
-    return static_cast<double>(correct) / static_cast<double>(dataset.size());
-}
-
-ConfusionCounts SoftmaxRegression::confusion_matrix(const LabeledDataset& dataset) const {
-    validate_dataset(dataset);
-    ConfusionCounts confusion(class_count(), std::vector<std::size_t>(class_count(), 0));
-    for (const auto& sample : dataset) {
-        ++confusion[sample.label][predict(sample.features)];
-    }
-    return confusion;
-}
-
-MulticlassMetrics SoftmaxRegression::evaluate(const LabeledDataset& dataset) const {
-    return multiclass_metrics(confusion_matrix(dataset));
 }
 
 std::vector<double> SoftmaxRegression::gradient(const LabeledDataset& dataset,
