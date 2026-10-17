@@ -28,6 +28,7 @@ plotting = ["matplotlib>=3.9"]
 ml-perceptron-logic-gates = "ml_scratch.pure.perceptron_experiment:main"
 ml-xor-mlp = "ml_scratch.pure.xor_mlp_experiment:main"
 ml-linear-regression = "ml_scratch.pure.linear_regression_experiment:main"
+ml-logistic-regression = "ml_scratch.pure.logistic_regression_experiment:main"
 
 [tool.setuptools.packages.find]
 where = ["src/python"]

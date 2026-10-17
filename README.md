@@ -30,7 +30,7 @@ meaningful differences.
 | Perceptron: XOR limitation | ✅ Demonstrated | Planned | Planned | Planned | ✅ Demonstrated | — |
 | Two-layer MLP: XOR | ✅ Complete | Planned | Planned | Planned | ✅ Complete | — |
 | Linear regression | ✅ Complete | Planned | Planned | Planned | ✅ Complete | — |
-| Binary logistic regression | Planned | Planned | Planned | Planned | ✅ Complete | — |
+| Binary logistic regression | ✅ Complete | Planned | Planned | Planned | ✅ Complete | — |
 | PCA and k-means | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Decision tree classification | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Backpropagation and gradient checking | Planned | Planned | Planned | Planned | ✅ Complete | — |
@@ -64,10 +64,12 @@ python -m pip install -e ".[dev]"
 python -m ml_scratch.pure.perceptron_experiment
 python -m ml_scratch.pure.xor_mlp_experiment
 python -m ml_scratch.pure.linear_regression_experiment
+python -m ml_scratch.pure.logistic_regression_experiment
 # Equivalent installed commands:
 ml-perceptron-logic-gates
 ml-xor-mlp
 ml-linear-regression
+ml-logistic-regression
 ```
 
 Optional extras can be installed only when their milestones need them:
@@ -178,10 +180,11 @@ quoted side by side without it holding. See the
 
 ### Binary logistic regression
 
-The C++ binary logistic regression model learns probabilities with explicitly implemented
+The pure-Python and C++ binary logistic regression models learn probabilities with explicitly implemented
 mini-batch gradients and numerically stable binary cross-entropy. It supports a positive-class
 weight, seeded shuffling, configurable loss-based stopping, and multivariate inputs. Separate
 evaluation utilities calculate a confusion matrix, accuracy, precision, recall, and F1.
+The Python implementation also exposes the weighted loss gradient for central-difference checks.
 
 The deterministic experiment uses fixed train, validation, and test splits with an imbalanced,
 overlapping dataset. It chooses a threshold by validation F1 and compares the frozen threshold on
