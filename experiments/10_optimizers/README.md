@@ -1,5 +1,9 @@
 # Experiment 10: optimizer comparisons
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Mathematics](../../docs/mathematics/optimizers.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [optimizer](../../src/cpp/src/optimizer.cpp) · [neural_network](../../src/cpp/src/neural_network.cpp)
+
 Batch gradient descent, SGD, mini-batch SGD, momentum, Nesterov momentum, RMSProp, and Adam, all
 minimizing the same loss with the same gradients on the same data from the same starting parameters.
 

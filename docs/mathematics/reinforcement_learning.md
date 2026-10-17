@@ -1,5 +1,7 @@
 # Q-learning, tabular and deep
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 Every earlier milestone was given the right answer for each input. Here there is no right answer
 — only a reward that arrives after an action, sometimes long after the action that earned it.
 The problem is no longer to fit a function to labelled examples but to find a policy whose

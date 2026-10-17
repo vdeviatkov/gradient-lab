@@ -1,5 +1,7 @@
 # Residual connections
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 Deeper networks can represent strictly more than shallow ones — a deep network can always emulate a
 shallow one by making its extra layers the identity. Yet plain deep stacks trained by gradient
 descent often perform *worse* than shallow ones, and not because they overfit: their training loss

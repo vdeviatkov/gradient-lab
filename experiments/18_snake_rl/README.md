@@ -1,5 +1,9 @@
 # Experiment 18: reinforcement learning on Snake
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Mathematics](../../docs/mathematics/reinforcement_learning.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [reinforcement](../../src/cpp/src/reinforcement.cpp) · [snake](../../src/cpp/src/snake.cpp)
+
 The first milestone without labels. A Snake environment written from scratch, a random policy
 and a scripted food-seeker as baselines, tabular Q-learning over the observation's bit patterns,
 and deep Q-learning with experience replay and a target network — every agent evaluated the same

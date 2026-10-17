@@ -1,5 +1,7 @@
 # Initialization, regularization, and normalization
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 Six techniques that change how a network trains without changing what it computes at inference —
 except for the one that does.
 

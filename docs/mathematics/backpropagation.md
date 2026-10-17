@@ -1,5 +1,7 @@
 # Backpropagation and numerical gradient checking
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 The XOR milestone derived gradients for one fixed network. This milestone generalizes that
 derivation to any stack of fully connected layers and then verifies it numerically.
 

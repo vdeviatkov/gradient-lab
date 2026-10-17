@@ -1,5 +1,9 @@
 # Experiment 13: residual connections
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Mathematics](../../docs/mathematics/residual.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [convolution](../../src/cpp/src/convolution.cpp) · [neural_network](../../src/cpp/src/neural_network.cpp)
+
 An identity skip isolated in an MLP first, then the same idea as convolutional blocks on CIFAR-10.
 
 ## Getting the data

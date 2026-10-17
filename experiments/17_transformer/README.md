@@ -1,5 +1,9 @@
 # Experiment 17: a decoder-only Transformer
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Mathematics](../../docs/mathematics/transformer.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [transformer](../../src/cpp/src/transformer.cpp)
+
 A small Transformer — sinusoidal positions, causal multi-head self-attention, pre-normalized
 residual blocks, every gradient derived by hand — trained on the same corpus, splits and
 vocabulary as the recurrent milestones, and read against them: the loss at the same epochs and

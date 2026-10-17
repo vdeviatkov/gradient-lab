@@ -1,5 +1,9 @@
 # Experiment 12: a convolutional network on MNIST
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Mathematics](../../docs/mathematics/convolution.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [convolution](../../src/cpp/src/convolution.cpp)
+
 The fully connected milestones left a specific residual: an MLP has no notion of locality or
 translation, so its errors spread thinly across many digit pairs. This experiment measures what
 building those two ideas into the architecture buys.

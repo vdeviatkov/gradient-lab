@@ -1,5 +1,9 @@
 # Experiment 11: initialization, regularization, and normalization
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Mathematics](../../docs/mathematics/regularization.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [neural_network](../../src/cpp/src/neural_network.cpp)
+
 Weight initialization, L1 and L2 penalties, dropout, early stopping, batch normalization, and layer
 normalization, each measured against the same unregularized baseline.
 

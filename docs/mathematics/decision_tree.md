@@ -1,5 +1,7 @@
 # Decision tree classification mathematics
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 A classification tree partitions feature space with axis-aligned splits. Each internal node holds a
 feature $j$ and a threshold $t$ and sends a sample left when $x_j \le t$; each leaf predicts the
 majority class of the training samples that reached it.

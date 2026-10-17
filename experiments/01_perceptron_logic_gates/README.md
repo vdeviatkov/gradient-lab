@@ -1,5 +1,9 @@
 # Experiment 01: perceptron logic gates
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Pure Python](../../src/python/ml_scratch/pure/README.md) · [Mathematics](../../docs/mathematics/perceptron.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [perceptron](../../src/cpp/src/perceptron.cpp) · [Python model](../../src/python/ml_scratch/pure/perceptron.py) · [Python runner](run.py)
+
 This experiment trains the dependency-free perceptron on the complete AND and OR truth tables and
 checks every prediction. It then uses the same training process on XOR to demonstrate the expected
 non-convergence of a single linear decision boundary.

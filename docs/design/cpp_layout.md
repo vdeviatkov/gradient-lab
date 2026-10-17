@@ -1,5 +1,7 @@
 # C++ core and experiment support
 
+[Design guides](README.md) · [C++ implementation](../../src/cpp/README.md)
+
 `src/cpp/src/` contains the algorithms: model state, forward passes, losses, explicit derivatives,
 updates, stopping rules, validation, and shared operations required during training or inference.
 `src/cpp/utils/` contains the surrounding experiment tools. CMake builds them as separate static

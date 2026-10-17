@@ -1,5 +1,9 @@
 # Experiment 06: decision tree classification
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Mathematics](../../docs/mathematics/decision_tree.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [decision_tree](../../src/cpp/src/decision_tree.cpp)
+
 This C++ experiment measures how depth control and pruning change overfitting, rather than
 reporting training accuracy alone.
 

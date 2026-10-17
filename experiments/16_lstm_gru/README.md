@@ -1,5 +1,9 @@
 # Experiment 16: LSTM and GRU cells against the elman cell
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Mathematics](../../docs/mathematics/lstm_gru.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [rnn](../../src/cpp/src/rnn.cpp)
+
 The recurrent milestone left one measurement pointing at its own limit: the gradient reaching
 twenty steps back was 0.6% of the gradient at the last step. This experiment swaps the cell — an
 LSTM, a GRU — inside exactly the same training loop, corpus, optimizer, window and streams, and

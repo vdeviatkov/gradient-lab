@@ -1,5 +1,7 @@
 # Gated recurrent cells: LSTM and GRU
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 The recurrent milestone measured its own limit. The gradient of one prediction with respect to
 the hidden state twenty steps earlier was 0.6% of the gradient at the last step, and training had
 made the decay steeper, not shallower. The cause is structural: an elman cell rewrites its whole

@@ -1,5 +1,9 @@
 # Experiment 09: an MLP on MNIST
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Mathematics](../../docs/mathematics/mlp_mnist.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [neural_network](../../src/cpp/src/neural_network.cpp)
+
 This experiment puts one hidden layer in front of the softmax classifier of
 [experiment 08](../08_softmax_mnist/README.md) and measures what that buys, under identical
 conditions.

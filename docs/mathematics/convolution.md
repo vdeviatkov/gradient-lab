@@ -1,5 +1,7 @@
 # Convolutional network mathematics
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 A fully connected layer gives every input its own weight. On a 28x28 image that is 784 weights per
 unit, and the layer has no idea that two pixels are adjacent: permute the pixels consistently across
 the dataset and it learns exactly as well. A convolutional layer builds the missing structure in.

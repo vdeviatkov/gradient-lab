@@ -1,5 +1,9 @@
 # Experiment 05: PCA and k-means
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Mathematics](../../docs/mathematics/pca_kmeans.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [pca](../../src/cpp/src/pca.cpp) · [kmeans](../../src/cpp/src/kmeans.cpp)
+
 This C++ experiment builds a synthetic dataset whose structure is known in advance, then checks
 whether unsupervised methods recover it.
 

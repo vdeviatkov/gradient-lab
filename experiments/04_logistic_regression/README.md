@@ -1,5 +1,9 @@
 # Experiment 04: binary logistic regression
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Pure Python](../../src/python/ml_scratch/pure/README.md) · [Mathematics](../../docs/mathematics/logistic_regression.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [logistic_regression](../../src/cpp/src/logistic_regression.cpp) · [Python model](../../src/python/ml_scratch/pure/logistic_regression.py) · [Python runner](run.py)
+
 The pure-Python and C++ experiments use a small, inspectable one-feature dataset with overlapping classes and a
 3:1 negative-to-positive training imbalance. Training, validation, and test examples are fixed in
 the source. Mini-batch order uses seed `20260904`.

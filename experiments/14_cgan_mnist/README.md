@@ -1,5 +1,9 @@
 # Experiment 14: a conditional GAN on MNIST
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Mathematics](../../docs/mathematics/gan.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [gan](../../src/cpp/src/gan.cpp)
+
 Two networks trained against each other: a generator that turns noise and a requested digit into an
 image, and a discriminator that tries to tell its images from real ones. Generated digits are
 treated as an evaluation problem — scored by a separately trained classifier and by distance-based

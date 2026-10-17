@@ -1,5 +1,7 @@
 # Conditional generative adversarial networks
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 Every earlier milestone minimized a loss that could be written down. A generative model has no
 such loss: the goal is samples that look like the data, and "looks like the data" is not a
 formula. A GAN's move is to *learn* the loss — a second network is trained to tell real samples

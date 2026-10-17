@@ -1,5 +1,7 @@
 # Linear regression mathematics
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 For a feature vector $x \in \mathbb{R}^d$, linear regression predicts
 
 $$

@@ -1,5 +1,9 @@
 # Experiment 07: backpropagation and gradient checking
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Mathematics](../../docs/mathematics/backpropagation.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [neural_network](../../src/cpp/src/neural_network.cpp)
+
 This C++ experiment verifies the general backpropagation implementation against finite differences,
 measures how the step size affects that verification, and then trains the network on a task a
 linear model cannot solve.

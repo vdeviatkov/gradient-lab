@@ -1,5 +1,7 @@
 # Optimizer mathematics
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 Every rule here minimizes the same loss with the same gradients. What changes is how a gradient
 becomes a step. Write $g_t$ for the gradient at step $t$, $\eta$ for the learning rate, and
 $\theta_t$ for the parameters.

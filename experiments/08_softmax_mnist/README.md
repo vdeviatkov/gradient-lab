@@ -1,5 +1,9 @@
 # Experiment 08: softmax regression on MNIST
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Mathematics](../../docs/mathematics/softmax_regression.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [softmax_regression](../../src/cpp/src/softmax_regression.cpp)
+
 This is the first milestone that uses a real dataset. It measures how far a purely linear model
 gets on MNIST, and reads the confusion matrix to see where it stops.
 

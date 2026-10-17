@@ -1,5 +1,7 @@
 # Perceptron mathematics
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 For an input vector $x$, weights $w$, and bias $b$, the binary perceptron predicts
 
 $$

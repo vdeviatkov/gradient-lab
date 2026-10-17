@@ -1,5 +1,7 @@
 # Binary logistic regression mathematics
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 Binary logistic regression maps an affine score to a probability:
 
 $$

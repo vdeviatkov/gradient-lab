@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   python:
-    name: Python tests and Ruff
+    name: Python, tooling, and documentation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,6 +23,8 @@ jobs:
         run: pytest
       - name: Run Ruff
         run: ruff check .
+      - name: Check documentation links
+        run: python scripts/check_docs.py
 
   cpp:
     name: CMake build and CTest

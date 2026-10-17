@@ -1,5 +1,7 @@
 # A decoder-only Transformer
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 The recurrent milestones carried the past in a state, and paid for it twice: a gradient that had
 to pass through every intervening step, and a computation that could not be parallelized across
 positions because each depended on the one before. Attention removes the state. Every position

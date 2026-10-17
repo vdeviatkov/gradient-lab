@@ -1,5 +1,9 @@
 # Experiment 19: implementation benchmarks
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [Benchmark harness](../../src/cpp/utils/benchmark.cpp)
+
 Every earlier milestone quoted a wall-clock column next to its accuracy. This one measures those
 costs properly and in one place: a benchmarking harness that auto-tunes its iteration count,
 separates the cold first call from the steady state, reports how much its own repetitions

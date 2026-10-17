@@ -1,5 +1,9 @@
 # Experiment 15: a character-level recurrent network
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Mathematics](../../docs/mathematics/rnn.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [rnn](../../src/cpp/src/rnn.cpp) · [char_ngram](../../src/cpp/src/char_ngram.cpp)
+
 A tanh recurrent network trained to predict the next character of Shakespeare by truncated
 backpropagation through time, scored against count-based n-gram models on fixed held-out text,
 and then taken apart: how far its gradient reaches back in time, what the truncation window

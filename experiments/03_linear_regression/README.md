@@ -1,5 +1,9 @@
 # Experiment 03: linear regression
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Pure Python](../../src/python/ml_scratch/pure/README.md) · [Mathematics](../../docs/mathematics/linear_regression.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [linear_regression](../../src/cpp/src/linear_regression.cpp) · [Python model](../../src/python/ml_scratch/pure/linear_regression.py) · [Python runner](run.py)
+
 Four ways to fit the same line — an exact closed-form reference and three gradient methods — in
 pure Python and in C++. The pure-Python experiment then goes after the two numbers that decide
 whether gradient descent works at all on a least-squares problem: the largest step it tolerates,

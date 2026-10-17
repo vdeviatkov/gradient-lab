@@ -1,12 +1,14 @@
 # Benchmarks
 
+[Results policy](../README.md) · [Experiments](../../experiments/README.md)
+
 Measurements produced by `./build/cpp_benchmarks` and `./scripts/benchmark_build.sh`, with the
 environment metadata needed to reproduce them. See
 [experiment 19](../../experiments/19_benchmarks/README.md) for the methodology and the reading.
 
 - `cpp.json` — run-time measurements: every repetition of every benchmark, plus the compiler,
   platform, build type, clock characteristics and peak resident memory of the run that produced
-  them. Both files are ignored by Git, like everything else under `results/`; run the experiment
+  them. Generated files in this directory are ignored by Git; run the experiment
   to regenerate them.
 - `cpp_build.json` — configure and compile times for a clean Release build.
 

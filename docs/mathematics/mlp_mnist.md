@@ -1,5 +1,7 @@
 # What a hidden layer adds
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 The gradients used here are the general ones derived in
 [the backpropagation notes](backpropagation.md). This note is about what changes when a hidden
 layer is placed in front of the softmax, and why that change shows up where it does on MNIST.

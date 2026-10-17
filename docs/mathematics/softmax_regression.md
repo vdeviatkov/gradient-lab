@@ -1,5 +1,7 @@
 # Softmax regression mathematics
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 Softmax regression — multinomial logistic regression — extends binary logistic regression from two
 classes to $K$. It keeps one linear score per class and turns the scores into a distribution.
 

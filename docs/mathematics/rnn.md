@@ -1,5 +1,7 @@
 # Recurrent networks and backpropagation through time
 
+[Mathematics index](README.md) · [Experiment catalog](../../experiments/README.md)
+
 Every earlier network mapped one fixed-size input to one output. Text has no fixed size, and the
 right prediction for the next character depends on characters arbitrarily far back. A recurrent
 network handles this with one idea: a hidden state that is updated by the same function at every

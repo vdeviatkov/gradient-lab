@@ -1,5 +1,9 @@
 # Experiment 02: two-layer MLP for XOR
 
+[All topics](../README.md) · [C++ implementation](../../src/cpp/README.md) · [Pure Python](../../src/python/ml_scratch/pure/README.md) · [Mathematics](../../docs/mathematics/xor_mlp.md)
+
+**Sources:** [C++ experiment](cpp_main.cpp) · [xor_mlp](../../src/cpp/src/xor_mlp.cpp) · [Python model](../../src/python/ml_scratch/pure/mlp.py) · [Python runner](run.py)
+
 The perceptron milestone ended with a failure it could not fix: XOR is not linearly separable, so
 one straight boundary cannot sort its four rows. This milestone adds a hidden layer and shows the
 failure go away — and then asks the question the fix invites, which is *how much* hidden layer is

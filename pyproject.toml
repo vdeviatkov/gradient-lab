@@ -35,8 +35,8 @@ where = ["src/python"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"
-testpaths = ["tests/python"]
-pythonpath = ["src/python"]
+testpaths = ["tests/python", "tests/tooling"]
+pythonpath = ["src/python", "scripts"]
 
 [tool.ruff]
 target-version = "py311"
