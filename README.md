@@ -29,7 +29,7 @@ meaningful differences.
 | Perceptron: AND / OR | ✅ Complete | Planned | Planned | Planned | ✅ Complete | — |
 | Perceptron: XOR limitation | ✅ Demonstrated | Planned | Planned | Planned | ✅ Demonstrated | — |
 | Two-layer MLP: XOR | ✅ Complete | Planned | Planned | Planned | ✅ Complete | — |
-| Linear regression | Planned | Planned | Planned | Planned | ✅ Complete | — |
+| Linear regression | ✅ Complete | Planned | Planned | Planned | ✅ Complete | — |
 | Binary logistic regression | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | PCA and k-means | Planned | Planned | Planned | Planned | ✅ Complete | — |
 | Decision tree classification | Planned | Planned | Planned | Planned | ✅ Complete | — |
@@ -63,9 +63,11 @@ python -m pip install -e ".[dev]"
 
 python -m ml_scratch.pure.perceptron_experiment
 python -m ml_scratch.pure.xor_mlp_experiment
+python -m ml_scratch.pure.linear_regression_experiment
 # Equivalent installed commands:
 ml-perceptron-logic-gates
 ml-xor-mlp
+ml-linear-regression
 ```
 
 Optional extras can be installed only when their milestones need them:
@@ -145,14 +147,32 @@ a general design. See the [reproducible experiment](experiments/02_xor_mlp/READM
 
 ### Linear regression
 
-The C++ linear regression milestone implements a reusable multivariate model and four fitting
+Implemented twice. Both versions provide a reusable multivariate model and four fitting
 strategies: the normal-equation solution, batch gradient descent, stochastic gradient descent,
 and mini-batch gradient descent. The closed-form solver uses pivoted Gaussian elimination written
-with standard-library containers; the iterative solvers use explicitly derived gradients and
-zero initialization. Seeded shuffling makes SGD and mini-batch runs reproducible.
+without a linear-algebra dependency; the iterative solvers use explicitly derived gradients and
+zero initialization, which a convex loss makes sufficient. Seeded shuffling makes SGD and
+mini-batch runs reproducible.
 
-The experiment fits a small exact line, evaluates on a fixed held-out set, and checks each
-optimizer against the closed-form coefficients. See the
+The pure-Python experiment adds the two numbers that decide whether gradient descent works at all
+here, both derived from the loss Hessian and then measured. **The largest usable step is
+`2 / λ_max`**: predicted 0.600000000, and bisecting for the largest rate that still reduces the
+error measures 0.600001006, off by 1.7e-06. **The epoch count tracks the condition number**:
+scaling one feature by 100 raises κ from 2 to 12762 and the epochs from 56 to 99481, and
+standardizing the features brings κ to 1.1 and the epochs back to 69. A fourth part shows what the
+closed form cannot tell you — with two nearly identical features the fitted coefficients travel
+from (2.0, 3.0) to (−370, +375) while **their sum stays pinned at 4.9995 and the training error
+does not move at all**, because the sum is what the data determines; an exactly collinear design
+is refused rather than answered.
+
+The two implementations also disagreed, and the reason is the useful part. At identical learning
+rates, seeds and stopping losses, C++ took 135 epochs where Python took 64 — because C++
+deliberately descends on *half* the mean squared error, a documented convention that cancels the
+factor of two from differentiation, while the Python version keeps it so that its `gradient`
+method is literally the gradient of its `mean_squared_error` method. Neither is wrong; they simply
+mean different things by the same learning rate. Halving the Python rate reproduces the C++ counts
+exactly (135, 51, 92), and the experiment asserts that match on every run so the two can never be
+quoted side by side without it holding. See the
 [linear regression mathematics](docs/mathematics/linear_regression.md) and the
 [reproducible experiment](experiments/03_linear_regression/README.md).
 
@@ -498,7 +518,16 @@ delta collapsing to `p - y`, the hand-derived gradient against central differenc
 widths, a numerical gradient that leaves the parameters untouched, XOR learned and its loss
 falling monotonically, one hidden unit never reaching more than the perceptron's three of four
 rows, four hidden units succeeding from every seed tried, Glorot initialization limits with zero
-biases, parameter round trips, and the experiment's own parts and determinism. CTest covers the same C++ perceptron
+biases, parameter round trips, and the experiment's own parts and determinism; and for linear
+regression, a hand-solved linear system, pivoting on a zero leading entry, refusal of a singular
+one, the affine prediction and both metrics, a mean squared error that returns infinity where
+CPython's `**` would raise, the gradient against central differences, the closed form recovering an
+exact line and sitting at the least-squares minimum, each of the three gradient methods reaching
+those coefficients, one batch epoch being one exact gradient step, divergence reported rather than
+returned, the Hessian against its definition and power iteration against the exact two-by-two
+eigenvalues, the stability threshold bracketing where descent stops working, standardizing removing
+the conditioning penalty and tolerating a constant feature, and the halved learning rate
+reproducing the C++ epoch counts. CTest covers the same C++ perceptron
 behavior, deterministic model parameters and histories, MLP convergence on every XOR example,
 all four linear-regression solvers, optimizer agreement, regression metrics and edge cases,
 logistic-regression convergence, numerical stability, threshold selection, classification
