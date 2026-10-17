@@ -1,6 +1,6 @@
 # PCA and k-means mathematics
 
-[Topic and experiment](README.md) · [C++](cpp/README.md)
+[Topic and experiment](README.md) · [C++](cpp/README.md) · [Python](python/README.md)
 
 Both algorithms in this milestone are unsupervised: they see only the feature matrix
 $X \in \mathbb{R}^{n \times d}$ and never the labels used later for evaluation.
@@ -97,9 +97,10 @@ Two initializations are implemented:
 
 Because a single run can land in a bad local minimum, the implementation runs several independent
 restarts and keeps the one with the lowest inertia. Restart $r$ uses seed $\text{seed}+r$, so a
-configuration reproduces exactly. Uniform values are drawn directly from `std::mt19937` output
-instead of through a standard distribution, whose implementation is not specified bit-for-bit, so
-seeded runs match across standard libraries.
+configuration reproduces exactly within an implementation. C++ draws uniform values directly
+from `std::mt19937` output instead of a standard distribution, making its draws independent of
+the standard-library distribution implementation. Python uses a local `random.Random` stream;
+the same integer seed does not imply the same cross-language initialization.
 
 A cluster can lose every member during the assignment step, leaving its mean undefined. The
 implementation reseeds such a cluster with the worst-served sample — the point farthest from its

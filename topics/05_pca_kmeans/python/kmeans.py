@@ -46,8 +46,9 @@ def cluster_purity(assignments: Sequence[int], true_labels: Sequence[int]) -> fl
     """Evaluation only; use at fixed k because increasing k can inflate purity."""
     if not assignments or len(assignments) != len(true_labels):
         raise ValueError("assignments must not be empty and sizes must match")
-    if any(isinstance(v, bool) or not isinstance(v, int) or v < 0
-           for v in (*assignments, *true_labels)):
+    if any(
+        isinstance(v, bool) or not isinstance(v, int) or v < 0 for v in (*assignments, *true_labels)
+    ):
         raise ValueError("assignments and labels must be non-negative integers")
     counts = defaultdict(Counter)
     for assignment, label in zip(assignments, true_labels, strict=True):
@@ -71,8 +72,10 @@ def _initialize(data, count, initialization, rng):
     centroids = [list(data[int(rng.random() * len(data))])]
     distances = [math.inf] * len(data)
     while len(centroids) < count:
-        distances = [min(distance, squared_distance(row, centroids[-1]))
-                     for row, distance in zip(data, distances, strict=True)]
+        distances = [
+            min(distance, squared_distance(row, centroids[-1]))
+            for row, distance in zip(data, distances, strict=True)
+        ]
         total = sum(distances)
         if not math.isfinite(total):
             raise ArithmeticError("seeding distances overflowed; rescale the features")
@@ -118,7 +121,9 @@ class KMeans:
     def inertia(self, data: Matrix) -> float:
         self._require_fitted()
         rows = feature_matrix(data)
-        total = sum(_closest(vector(row, len(self.centroids[0])), self.centroids)[1] for row in rows)
+        total = sum(
+            _closest(vector(row, len(self.centroids[0])), self.centroids)[1] for row in rows
+        )
         if not math.isfinite(total):
             raise ArithmeticError("inertia overflowed; rescale the features")
         return total
@@ -133,18 +138,26 @@ class KMeans:
             raise ValueError("unknown initialization")
         if not math.isfinite(config.tolerance) or config.tolerance < 0:
             raise ValueError("tolerance must be finite and non-negative")
-        if isinstance(config.seed, bool) or not isinstance(config.seed, int) or not 0 <= config.seed < 2**32:
+        if (
+            isinstance(config.seed, bool)
+            or not isinstance(config.seed, int)
+            or not 0 <= config.seed < 2**32
+        ):
             raise ValueError("seed must be a uint32 integer")
         width = len(rows[0])
         summaries = []
         best_inertia, best_centroids, best_labels, best_restart = math.inf, (), (), 0
         for restart in range(config.restarts):
-            seed = (config.seed + restart) & 0xffffffff
-            centroids = _initialize(rows, self.cluster_count, config.initialization, random.Random(seed))
+            seed = (config.seed + restart) & 0xFFFFFFFF
+            centroids = _initialize(
+                rows, self.cluster_count, config.initialization, random.Random(seed)
+            )
             history = []
             converged = False
             for iteration in range(1, config.max_iterations + 1):
-                assignments, distances = zip(*(_closest(row, centroids) for row in rows), strict=True)
+                assignments, distances = zip(
+                    *(_closest(row, centroids) for row in rows), strict=True
+                )
                 assignments, distances = list(assignments), list(distances)
                 sums = [[0.0] * width for _ in centroids]
                 counts = [0] * self.cluster_count
@@ -165,10 +178,13 @@ class KMeans:
                         sums[empty][j] = value
                     assignments[worst] = empty
                     distances[worst] = 0.0
-                updated = [[value / count for value in row] for row, count in
-                           zip(sums, counts, strict=True)]
-                movement = sum(squared_distance(old, new) for old, new in
-                               zip(centroids, updated, strict=True))
+                updated = [
+                    [value / count for value in row]
+                    for row, count in zip(sums, counts, strict=True)
+                ]
+                movement = sum(
+                    squared_distance(old, new) for old, new in zip(centroids, updated, strict=True)
+                )
                 centroids = updated
                 inertia = sum(_closest(row, centroids)[1] for row in rows)
                 if not math.isfinite(inertia):
@@ -177,12 +193,15 @@ class KMeans:
                 if movement <= config.tolerance:
                     converged = True
                     break
-            summaries.append(KMeansRestartSummary(seed, inertia, iteration, converged, tuple(history)))
+            summaries.append(
+                KMeansRestartSummary(seed, inertia, iteration, converged, tuple(history))
+            )
             if inertia < best_inertia:
                 best_inertia, best_restart = inertia, restart
                 best_centroids = tuple(tuple(row) for row in centroids)
                 best_labels = tuple(_closest(row, centroids)[0] for row in rows)
         self.centroids, self.labels = best_centroids, best_labels
         best = summaries[best_restart]
-        return KMeansTrainingResult(best.inertia, best.iterations, best.converged,
-                                    best_restart, tuple(summaries))
+        return KMeansTrainingResult(
+            best.inertia, best.iterations, best.converged, best_restart, tuple(summaries)
+        )

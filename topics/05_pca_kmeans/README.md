@@ -2,9 +2,9 @@
 
 [All topics](../../README.md#topics) · [Idea and mathematics](idea.md) · [Setup](../../docs/getting-started.md)
 
-**Implementations:** [C++](cpp/README.md) · [Backend status](../../README.md#topics)
+**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [Backend status](../../README.md#topics)
 
-This C++ experiment builds a synthetic dataset whose structure is known in advance, then checks
+The C++ and pure-Python experiments build a synthetic dataset whose structure is known in advance, then checks
 whether unsupervised methods recover it.
 
 ## Dataset
@@ -44,6 +44,15 @@ specified bit-for-bit and the dataset should be identical on every standard libr
    is the baseline: its purity is the majority-class frequency and its inertia is the total scatter.
 
 ## Running it
+
+After [Python setup](../../docs/getting-started.md), run:
+
+```bash
+python -m ml_scratch.pure.pca_kmeans.experiment
+# Installed command: ml-pca-kmeans
+```
+
+Build and run C++:
 
 ```bash
 cmake -S . -B build
@@ -86,3 +95,35 @@ which matches the true group count.
 Both initializations reached the same optimum here; the groups are well separated, so 10 restarts
 are enough for either one. Clustering the projection was marginally cheaper in inertia because the
 two discarded components carry only noise, and it lost no purity.
+
+
+## Pure-Python result and comparison
+
+Measured on 2026-10-17 with CPython 3.14.7 on macOS 26.3.1 (arm64), seed `20260907`,
+using the same 72 / 24 / 24 splits, covariance normalization,
+component/sign conventions, cluster-count grid, ten restarts, and centroid-movement threshold as
+C++. The dataset-only splitmix64/Box-Muller stream matches the C++ data generator. The Python
+learner uses its own local `random.Random` stream, so k-means starts need not match C++'s
+`std::mt19937` starts even with the same seed.
+
+The PCA spectrum and all four test reconstruction errors match the recorded C++ values above at
+six decimal places. Validation again selects `k=3`. The first five validation inertias also match;
+at `k=6`, Python measures `16.023206`, compared with C++'s recorded `15.690816`. Different
+initializations find different local minima; neither value changes the elbow selection.
+
+| Python clustering | Train inertia | Test inertia | Test purity | Iterations |
+|---|---:|---:|---:|---:|
+| Single cluster | 1288.962690 | 396.979729 | 0.333333 | 2 |
+| k-means++ on raw features | 80.253355 | 20.942124 | 1.000000 | 2 |
+| Random initialization on raw features | 80.253355 | 20.942124 | 1.000000 | 3 |
+| k-means++ on PCA-2 | 79.917241 | 20.848189 | 1.000000 | 2 |
+
+All four fits converge in this run. The test inertias/purities match the recorded C++ results at
+printed precision. Inertias in raw and projected coordinates are different objectives: dropping
+noise dimensions lowers distances, so the smaller projected inertia alone is not evidence of
+better clustering. Purity and the reconstruction measurement confirm recovery on this synthetic
+fixture; they do not establish general performance on arbitrary datasets.
+
+See the [Python implementation notes](python/README.md) for APIs, convergence reporting, tests,
+and deliberate solver-safety differences. No labels enter PCA fitting, k-means fitting, or
+cluster-count selection.

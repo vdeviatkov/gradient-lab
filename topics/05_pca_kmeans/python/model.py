@@ -61,7 +61,10 @@ def jacobi_eigen_decomposition(
     pair_threshold = threshold / max(1.0, math.sqrt(size * (size - 1)))
 
     def off_diagonal_norm():
-        return math.hypot(*(working[j][k] for j in range(size) for k in range(size) if j != k))
+        norm = math.hypot(*(working[j][k] for j in range(size) for k in range(size) if j != k))
+        if not math.isfinite(norm):
+            raise ArithmeticError("eigendecomposition overflowed; rescale the matrix")
+        return norm
 
     for _ in range(max_sweeps):
         if off_diagonal_norm() <= threshold:
@@ -71,7 +74,7 @@ def jacobi_eigen_decomposition(
                 if abs(working[j][k]) <= pair_threshold:
                     continue
                 theta = (working[k][k] - working[j][j]) / (2 * working[j][k])
-                t = math.copysign(1.0, theta) / (abs(theta) + math.hypot(theta, 1.0))
+                t = (1.0 if theta >= 0.0 else -1.0) / (abs(theta) + math.hypot(theta, 1.0))
                 cosine = 1.0 / math.sqrt(1 + t * t)
                 sine = t * cosine
                 for row in working:
@@ -86,6 +89,8 @@ def jacobi_eigen_decomposition(
                     rotations[index][k] = sine * first + cosine * second
     if off_diagonal_norm() > threshold:
         raise RuntimeError("Jacobi eigensolver did not converge within max_sweeps")
+    if any(not math.isfinite(value) for row in working for value in row):
+        raise ArithmeticError("eigendecomposition overflowed; rescale the matrix")
     order = sorted(range(size), key=lambda j: (-working[j][j], j))
     eigenvectors = []
     for j in order:
@@ -94,9 +99,7 @@ def jacobi_eigen_decomposition(
         if direction[dominant] < 0:
             direction = tuple(-value for value in direction)
         eigenvectors.append(direction)
-    return SymmetricEigenDecomposition(
-        tuple(working[j][j] for j in order), tuple(eigenvectors)
-    )
+    return SymmetricEigenDecomposition(tuple(working[j][j] for j in order), tuple(eigenvectors))
 
 
 @dataclass
@@ -127,8 +130,8 @@ class PrincipalComponentAnalysis:
         variances = tuple(max(0.0, value) for value in decomposition.eigenvalues)
         total = sum(variances)
         self.mean = tuple(sum(row[j] for row in rows) / len(rows) for j in range(len(rows[0])))
-        self.components = decomposition.eigenvectors[:self.component_count]
-        self.explained_variance = variances[:self.component_count]
+        self.components = decomposition.eigenvectors[: self.component_count]
+        self.explained_variance = variances[: self.component_count]
         self.total_variance = total
         self.explained_variance_ratio = tuple(
             value / total if total else 0.0 for value in self.explained_variance
@@ -137,8 +140,10 @@ class PrincipalComponentAnalysis:
     def transform(self, sample: Sequence[float]) -> tuple[float, ...]:
         self._require_fitted()
         values = vector(sample, len(self.mean))
-        return tuple(sum(w * (x - m) for w, x, m in zip(component, values, self.mean, strict=True))
-                     for component in self.components)
+        return tuple(
+            sum(w * (x - m) for w, x, m in zip(component, values, self.mean, strict=True))
+            for component in self.components
+        )
 
     def transform_many(self, data: Matrix) -> tuple[tuple[float, ...], ...]:
         self._require_fitted()
@@ -147,12 +152,15 @@ class PrincipalComponentAnalysis:
     def inverse_transform(self, projection: Sequence[float]) -> tuple[float, ...]:
         self._require_fitted()
         values = vector(projection, self.component_count)
-        return tuple(mean + sum(z * component[j] for z, component in
-                                zip(values, self.components, strict=True))
-                     for j, mean in enumerate(self.mean))
+        return tuple(
+            mean
+            + sum(z * component[j] for z, component in zip(values, self.components, strict=True))
+            for j, mean in enumerate(self.mean)
+        )
 
     def reconstruction_error(self, data: Matrix) -> float:
         self._require_fitted()
         rows = feature_matrix(data)
-        return sum(squared_distance(row, self.inverse_transform(self.transform(row)))
-                   for row in rows) / (len(rows) * len(self.mean))
+        return sum(
+            squared_distance(row, self.inverse_transform(self.transform(row))) for row in rows
+        ) / (len(rows) * len(self.mean))

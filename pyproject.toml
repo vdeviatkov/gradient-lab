@@ -29,6 +29,7 @@ ml-perceptron-logic-gates = "ml_scratch.pure.perceptron.experiment:main"
 ml-xor-mlp = "ml_scratch.pure.mlp.experiment:main"
 ml-linear-regression = "ml_scratch.pure.linear_regression.experiment:main"
 ml-logistic-regression = "ml_scratch.pure.logistic_regression.experiment:main"
+ml-pca-kmeans = "ml_scratch.pure.pca_kmeans.experiment:main"
 
 [tool.setuptools]
 packages = [
@@ -38,6 +39,7 @@ packages = [
   "ml_scratch.pure.mlp",
   "ml_scratch.pure.linear_regression",
   "ml_scratch.pure.logistic_regression",
+  "ml_scratch.pure.pca_kmeans",
 ]
 
 [tool.setuptools.package-dir]
@@ -47,6 +49,7 @@ packages = [
 "ml_scratch.pure.mlp" = "topics/02_xor_mlp/python"
 "ml_scratch.pure.linear_regression" = "topics/03_linear_regression/python"
 "ml_scratch.pure.logistic_regression" = "topics/04_logistic_regression/python"
+"ml_scratch.pure.pca_kmeans" = "topics/05_pca_kmeans/python"
 
 [tool.pytest.ini_options]
 addopts = "-ra"
