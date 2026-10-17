@@ -11,7 +11,7 @@ For an input $x \in \mathbb{R}^d$, class $k$ has a weight row $w_k$ and a bias $
 
 $$
 z_k = w_k^T x + b_k, \qquad
-p_k = \operatorname{softmax}(z)_k = \frac{e^{z_k}}{\sum_{j=1}^{K} e^{z_j}} .
+p_k = \mathrm{softmax}(z)_k = \frac{e^{z_k}}{\sum_{j=1}^{K} e^{z_j}} .
 $$
 
 The outputs are non-negative and sum to one by construction. With $K = 2$ this reduces to the

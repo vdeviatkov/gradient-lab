@@ -11,7 +11,7 @@ Consider a layer $z = Wa$ with $n$ inputs. If the weights are drawn independentl
 $\sigma_w^2$ and the inputs have variance $\sigma_a^2$, then
 
 $$
-\operatorname{Var}(z) = n\,\sigma_w^2\,\sigma_a^2 .
+\mathrm{Var}(z) = n\,\sigma_w^2\,\sigma_a^2 .
 $$
 
 Activation variance is therefore multiplied by $n\sigma_w^2$ at every layer. Anything other than
@@ -21,15 +21,15 @@ is nearly zero. **Glorot** takes the middle course by balancing the forward and 
 which have fan-in and fan-out respectively:
 
 $$
-\operatorname{Var}(w) = \frac{2}{n_{\text{in}} + n_{\text{out}}},
+\mathrm{Var}(w) = \frac{2}{n_{\text{in}} + n_{\text{out}}},
 \qquad
 w \sim \mathcal{U}\!\left[-\sqrt{\tfrac{6}{n_{\text{in}} + n_{\text{out}}}},\;
 \sqrt{\tfrac{6}{n_{\text{in}} + n_{\text{out}}}}\right],
 $$
 
-using $\operatorname{Var}(\mathcal{U}[-l, l]) = l^2/3$. **He** corrects for ReLU: it zeroes half its
+using $\mathrm{Var}(\mathcal{U}[-l, l]) = l^2/3$. **He** corrects for ReLU: it zeroes half its
 inputs, halving the variance it passes on, so the target doubles to
-$\operatorname{Var}(w) = 2/n_{\text{in}}$.
+$\mathrm{Var}(w) = 2/n_{\text{in}}$.
 
 Zero initialization fails for a different reason. Every hidden unit in a layer then computes the
 same function, receives the same gradient, and is updated identically — they remain indistinguishable
@@ -46,7 +46,7 @@ $$
 L_{\text{total}} = L_{\text{data}} + \lambda_1 \sum_j |w_j| + \frac{\lambda_2}{2}\sum_j w_j^2 .
 $$
 
-Their gradients are $\lambda_1 \operatorname{sign}(w_j)$ and $\lambda_2 w_j$, which behave quite
+Their gradients are $\lambda_1 \mathrm{sign}(w_j)$ and $\lambda_2 w_j$, which behave quite
 differently near zero. L2's force is **proportional to the weight**, so it shrinks large weights hard
 and essentially stops bothering small ones — the result is many small weights and none exactly zero.
 L1's force has **constant magnitude** regardless of how small the weight already is, so it keeps

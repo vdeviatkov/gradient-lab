@@ -79,7 +79,7 @@ passes.
 With $p = D(G(z)) = \sigma(z_D)$, the generator's half of the minimax objective is
 
 $$
-L_{\text{minimax}} = \log(1 - p) = -\operatorname{softplus}(z_D),
+L_{\text{minimax}} = \log(1 - p) = -\mathrm{softplus}(z_D),
 \qquad
 \frac{\partial L_{\text{minimax}}}{\partial z_D} = -p .
 $$
@@ -89,7 +89,7 @@ when the generator most needs to move. The original paper's practical recommenda
 maximize $\log p$ instead:
 
 $$
-L_{\text{non-saturating}} = -\log p = \operatorname{softplus}(-z_D),
+L_{\text{non-saturating}} = -\log p = \mathrm{softplus}(-z_D),
 \qquad
 \frac{\partial L_{\text{non-saturating}}}{\partial z_D} = p - 1 .
 $$

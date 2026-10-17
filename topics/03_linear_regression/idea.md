@@ -11,13 +11,13 @@ $$
 The implementation reports mean squared error (MSE),
 
 $$
-\operatorname{MSE} = \frac{1}{N}\sum_{i=1}^{N}(\hat y_i-y_i)^2,
+\mathrm{MSE} = \frac{1}{N}\sum_{i=1}^{N}(\hat y_i-y_i)^2,
 $$
 
 and the two implementations descend on it under different but equivalent conventions, which is
 worth stating because it changes what a learning rate means.
 
-The C++ implementation minimizes the half-MSE objective $\tfrac12\operatorname{MSE}$. Halving does
+The C++ implementation minimizes the half-MSE objective $\tfrac12\mathrm{MSE}$. Halving does
 not move the optimum and it cancels the factor of two that differentiation produces, so for a
 batch $B$ its gradients are
 

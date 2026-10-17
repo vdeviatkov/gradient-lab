@@ -14,7 +14,7 @@ With $x_t$ the one-hot encoding of the character at step $t$,
 $$
 h_t = \tanh\big(W_{xh} x_t + W_{hh} h_{t-1} + b_h\big), \qquad
 z_t = W_{hy} h_t + b_y, \qquad
-p_t = \operatorname{softmax}(z_t),
+p_t = \mathrm{softmax}(z_t),
 $$
 
 and the loss is the mean over steps of $-\log p_t[x_{t+1}]$: the cross-entropy of the next
@@ -80,7 +80,7 @@ The gradient of a loss at step $T$ with respect to the state $k$ steps earlier i
 $$
 \frac{\partial L_T}{\partial h_{T-k}}
 = \frac{\partial L_T}{\partial h_T}\prod_{j=1}^{k}
-  \operatorname{diag}\!\big(1 - h_{T-j+1}^2\big)\, W_{hh} ,
+  \mathrm{diag}\!\big(1 - h_{T-j+1}^2\big)\, W_{hh} ,
 $$
 
 and a product of $k$ matrices behaves geometrically in $k$. Each tanh derivative is at most one

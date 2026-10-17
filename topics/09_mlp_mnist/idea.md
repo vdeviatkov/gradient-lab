@@ -36,7 +36,7 @@ compute the same function, receive the same gradient, and stay identical forever
 to be broken randomly.
 
 The scale matters as much as the randomness. Signal variance is multiplied by roughly
-$\text{fan\_in} \cdot \operatorname{Var}(w)$ at each layer, so weights that are too small shrink
+$\text{fan\_in} \cdot \mathrm{Var}(w)$ at each layer, so weights that are too small shrink
 activations and gradients toward zero through depth, and weights that are too large saturate
 squashing activations or explode. The implementation draws uniformly from $[-l, l]$ with
 

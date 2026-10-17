@@ -49,7 +49,7 @@ $J$ in the $(p,q)$ plane chosen so that $(J^T C J)_{pq} = 0$. With
 
 $$
 \theta = \frac{C_{qq}-C_{pp}}{2C_{pq}}, \qquad
-t = \frac{\operatorname{sign}(\theta)}{|\theta| + \sqrt{\theta^2+1}}, \qquad
+t = \frac{\mathrm{sign}(\theta)}{|\theta| + \sqrt{\theta^2+1}}, \qquad
 c = \frac{1}{\sqrt{t^2+1}}, \qquad s = tc,
 $$
 

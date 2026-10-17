@@ -47,7 +47,7 @@ regression has no interchangeable hidden units. Seeded shuffling controls mini-b
 
 The sigmoid uses separate formulas for positive and negative scores to avoid overflow. Loss is
 computed from logits using the stable identity
-$\operatorname{softplus}(z)=\max(z,0)+\log(1+e^{-|z|})$, avoiding `log(0)` at saturated
+$\mathrm{softplus}(z)=\max(z,0)+\log(1+e^{-|z|})$, avoiding `log(0)` at saturated
 probabilities.
 
 ## Threshold selection and metrics

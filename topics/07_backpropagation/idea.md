@@ -67,7 +67,7 @@ slope factor cancel:
 $$
 \delta^{(L)}_k = \frac{\sigma(z_k) - y_k}{m},
 \qquad
-\delta^{(L)}_k = p_k - y_k \ \ \text{with}\ \ p = \operatorname{softmax}(z).
+\delta^{(L)}_k = p_k - y_k \ \ \text{with}\ \ p = \mathrm{softmax}(z).
 $$
 
 That cancellation is worth stating plainly: $\sigma' = \sigma(1-\sigma)$ vanishes when the unit
@@ -76,7 +76,7 @@ predictions, while pairing it with cross-entropy does not. Keeping the transform
 also allows the stable forms
 
 $$
--\log \sigma(z)\ \text{written as}\ \operatorname{softplus}(z) - yz,
+-\log \sigma(z)\ \text{written as}\ \mathrm{softplus}(z) - yz,
 \qquad
 \log \textstyle\sum_k e^{z_k} = \max_k z_k + \log \sum_k e^{z_k - \max_k z_k},
 $$

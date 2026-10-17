@@ -76,7 +76,7 @@ s_t = \rho s_{t-1} + (1-\rho) g_t^2, \qquad
 $$
 
 Since $\sqrt{s_t}$ tracks the typical magnitude of that coordinate's gradient, the step is roughly
-$\eta \cdot \operatorname{sign}(g)$ regardless of whether the gradient is $100$ or $0.01$. The
+$\eta \cdot \mathrm{sign}(g)$ regardless of whether the gradient is $100$ or $0.01$. The
 $\varepsilon$ floor keeps a coordinate with a vanishing gradient history from dividing by zero.
 
 This normalization has a consequence that is easy to miss: because the step no longer shrinks as the
@@ -104,7 +104,7 @@ $\beta_2 = 0.999$. Uncorrected, the first step would be scaled by
 $(1-\beta_1)/\sqrt{1-\beta_2} \approx 3.2$ — wrong in an unhelpful direction and wrong by a
 different factor at every step. Dividing by $1-\beta^t$ removes exactly that bias, and at $t = 1$
 gives $\hat{m}_1 = g_1$ and $\hat{v}_1 = g_1^2$, so the first step is
-$\eta\, g/(|g| + \varepsilon) \approx \eta \operatorname{sign}(g)$ whatever the gradient's scale.
+$\eta\, g/(|g| + \varepsilon) \approx \eta \mathrm{sign}(g)$ whatever the gradient's scale.
 The tests check that property directly, including for a gradient of $10^{-6}$.
 
 ## What the comparison can and cannot show

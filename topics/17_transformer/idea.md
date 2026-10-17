@@ -38,8 +38,8 @@ without warm-up:
 
 $$
 \begin{aligned}
-a &= \operatorname{LN}_1(h), & h' &= h + \operatorname{Attention}(a)\,W_o^\top,\\
-b &= \operatorname{LN}_2(h'), & h'' &= h' + \operatorname{ReLU}(b W_1^\top + b_1)\,W_2^\top + b_2 .
+a &= \mathrm{LN}_1(h), & h' &= h + \mathrm{Attention}(a)\,W_o^\top,\\
+b &= \mathrm{LN}_2(h'), & h'' &= h' + \mathrm{ReLU}(b W_1^\top + b_1)\,W_2^\top + b_2 .
 \end{aligned}
 $$
 
