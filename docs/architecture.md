@@ -20,6 +20,12 @@ topics/<number>_<topic>/
     model.py                    # Canonical algorithm
     experiment.py               # Experiment orchestration and installed CLI
     tests/
+  numpy/                        # Present when the NumPy implementation exists
+    README.md
+    __init__.py                 # Public API exports only
+    model.py                    # Vectorized algorithm, preserving the idea being taught
+    experiment.py
+    tests/
 shared/                         # Common infrastructure used by multiple topics
 docs/                           # Setup, backend conventions, design, contribution guidance
 tests/                          # Cross-topic integration and repository-tool checks
@@ -47,7 +53,8 @@ The topic sequence is stable. Each C++ folder registers itself with the root bui
 explicit package map installs topic-local packages without mirroring source into another tree.
 Existing model include names, Python model imports, installed CLI names, and `build/cpp_*`
 executables are retained. The n-gram baseline now has its own `ml_scratch/char_ngram.hpp` header
-in topic 15 rather than being declared in the shared corpus header. Experiment module paths now use `ml_scratch.pure.<model>.experiment`.
+in topic 15 rather than being declared in the shared corpus header. Experiment module paths use `ml_scratch.pure.<model>.experiment` or
+`ml_scratch.numpy.<model>.experiment`; see [NumPy conventions](implementations/numpy.md).
 
 ## Local artifacts
 

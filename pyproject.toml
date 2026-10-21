@@ -29,27 +29,48 @@ ml-perceptron-logic-gates = "ml_scratch.pure.perceptron.experiment:main"
 ml-xor-mlp = "ml_scratch.pure.mlp.experiment:main"
 ml-linear-regression = "ml_scratch.pure.linear_regression.experiment:main"
 ml-logistic-regression = "ml_scratch.pure.logistic_regression.experiment:main"
+ml-decision-tree = "ml_scratch.pure.decision_tree.experiment:main"
 ml-pca-kmeans = "ml_scratch.pure.pca_kmeans.experiment:main"
+
+ml-numpy-perceptron = "ml_scratch.numpy.perceptron.experiment:main"
+ml-numpy-mlp = "ml_scratch.numpy.mlp.experiment:main"
+ml-numpy-linear-regression = "ml_scratch.numpy.linear_regression.experiment:main"
+ml-numpy-logistic-regression = "ml_scratch.numpy.logistic_regression.experiment:main"
+ml-numpy-pca-kmeans = "ml_scratch.numpy.pca_kmeans.experiment:main"
 
 [tool.setuptools]
 packages = [
   "ml_scratch",
   "ml_scratch.pure",
+  "ml_scratch.numpy",
+  "ml_scratch.numpy.perceptron",
+  "ml_scratch.numpy.mlp",
+  "ml_scratch.numpy.linear_regression",
+  "ml_scratch.numpy.logistic_regression",
+  "ml_scratch.numpy.pca_kmeans",
   "ml_scratch.pure.perceptron",
   "ml_scratch.pure.mlp",
   "ml_scratch.pure.linear_regression",
   "ml_scratch.pure.logistic_regression",
   "ml_scratch.pure.pca_kmeans",
+  "ml_scratch.pure.decision_tree",
 ]
 
 [tool.setuptools.package-dir]
 "ml_scratch" = "shared/python/ml_scratch"
 "ml_scratch.pure" = "shared/python/ml_scratch/pure"
+"ml_scratch.numpy" = "shared/python/ml_scratch/numpy"
+"ml_scratch.numpy.perceptron" = "topics/01_perceptron_logic_gates/numpy"
+"ml_scratch.numpy.mlp" = "topics/02_xor_mlp/numpy"
+"ml_scratch.numpy.linear_regression" = "topics/03_linear_regression/numpy"
+"ml_scratch.numpy.logistic_regression" = "topics/04_logistic_regression/numpy"
+"ml_scratch.numpy.pca_kmeans" = "topics/05_pca_kmeans/numpy"
 "ml_scratch.pure.perceptron" = "topics/01_perceptron_logic_gates/python"
 "ml_scratch.pure.mlp" = "topics/02_xor_mlp/python"
 "ml_scratch.pure.linear_regression" = "topics/03_linear_regression/python"
 "ml_scratch.pure.logistic_regression" = "topics/04_logistic_regression/python"
 "ml_scratch.pure.pca_kmeans" = "topics/05_pca_kmeans/python"
+"ml_scratch.pure.decision_tree" = "topics/06_decision_tree/python"
 
 [tool.pytest.ini_options]
 addopts = "-ra"

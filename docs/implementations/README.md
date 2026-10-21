@@ -6,15 +6,16 @@ Implemented backends have shared tooling guides:
 
 - [C++20](cpp.md): compilation, includes, core/support linking, and source ownership.
 - [Pure Python](pure-python.md): package mapping, model imports, and experiment CLIs.
+- [NumPy](numpy.md): vectorized models, explicit algorithms, and reference comparisons.
 
-## Planned backends
+## Additional backends
 
 The root matrix records implementation status. These sections define scope without creating empty
 backend folders or separate placeholder documents.
 
 ### NumPy
 
-Vectorize explicit operations and gradients while preserving scalar reference behavior.
+Topics 01–05 are implemented. See [NumPy conventions](numpy.md) for commands and numerical contracts.
 
 ### PyTorch
 

@@ -2,7 +2,7 @@
 
 [All topics](../../README.md#topics) · [Idea and mathematics](idea.md) · [Setup](../../docs/getting-started.md)
 
-**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [Backend status](../../README.md#topics)
+**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [Backend status](../../README.md#topics)
 
 The pure-Python and C++ experiments use a small, inspectable one-feature dataset with overlapping classes and a
 3:1 negative-to-positive training imbalance. Training, validation, and test examples are fixed in
@@ -55,3 +55,24 @@ Its F1 improves while accuracy decreases: the choice of metric determines which 
 Tests cover weighted gradients against central differences, extreme logits, hand-counted metrics,
 threshold ties, partial batches, reset and stopping behavior, reproducibility, invalid inputs,
 and the experiment's held-out improvement criteria.
+
+## NumPy reproduction
+
+Measured on 2026-10-20 with CPython 3.14.7 and NumPy 2.5.4 on macOS 26.3.1 (arm64).
+Command: `python -m ml_scratch.numpy.logistic_regression.experiment` after installing `.[numpy]`.
+Reported quantities are measured losses, predictions, and iteration counts from the current run;
+no runtime comparison is claimed. See the [NumPy implementation](numpy/README.md) for conventions.
+
+Seed `20260904`, learning rate `0.1`, mini-batch size 4, positive class weight 1, and target
+BCE `0.30` reproduced the Python experiment's fixed train/validation/test splits and threshold grid.
+Training stopped at 246 epochs, BCE `0.299995`, weight `2.210806`, bias `-2.255443`.
+Validation F1 selected threshold `0.20` with F1 `0.666667`.
+
+| Test prediction rule | Accuracy | Recall | F1 |
+|---|---:|---:|---:|
+| Majority baseline | 0.800000 | 0.000000 | 0.000000 |
+| Threshold 0.50 | 0.700000 | 0.500000 | 0.400000 |
+| Validation-selected threshold 0.20 | 0.600000 | 1.000000 | 0.500000 |
+
+The selected threshold improves the optimized metric, F1, while reducing accuracy on this small
+held-out test split. The test set was not used to select it.

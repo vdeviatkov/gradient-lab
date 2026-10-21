@@ -33,15 +33,22 @@ def test_python_package_map_installs_topic_sources_without_a_mirror_tree():
     for name, location in mapping.items():
         directory = ROOT / location
         assert (directory / "__init__.py").is_file()
-        if name in {"ml_scratch", "ml_scratch.pure"}:
+        if name in {"ml_scratch", "ml_scratch.pure", "ml_scratch.numpy"}:
             assert location.startswith("shared/python/")
         else:
-            assert location.startswith("topics/") and location.endswith("/python")
+            assert location.startswith("topics/")
+            assert location.endswith(
+                "/numpy" if name.startswith("ml_scratch.numpy.") else "/python"
+            )
             for file in ["model.py", "experiment.py", "README.md"]:
                 assert (directory / file).is_file()
             assert list((directory / "tests").glob("test_*.py"))
             declared_topics.add(directory.resolve())
-    assert declared_topics == {path.resolve() for path in (ROOT / "topics").glob("*/python")}
+    assert declared_topics == {
+        path.resolve()
+        for backend in ("python", "numpy")
+        for path in (ROOT / "topics").glob(f"*/{backend}")
+    }
     for entrypoint in config["project"]["scripts"].values():
         module, function = entrypoint.split(":")
         package, leaf = module.rsplit(".", 1)
@@ -52,6 +59,7 @@ def test_topic_algorithms_have_one_canonical_source_copy():
     owners = {}
     files = list((ROOT / "topics").glob("*/cpp/*.cpp"))
     files += list((ROOT / "topics").glob("*/python/model.py"))
+    files += list((ROOT / "topics").glob("*/numpy/model.py"))
     for path in files:
         if path.name == "main.cpp":
             continue

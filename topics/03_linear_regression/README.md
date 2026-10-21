@@ -2,7 +2,7 @@
 
 [All topics](../../README.md#topics) · [Idea and mathematics](idea.md) · [Setup](../../docs/getting-started.md)
 
-**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [Backend status](../../README.md#topics)
+**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [Backend status](../../README.md#topics)
 
 Four ways to fit the same line — an exact closed-form reference and three gradient methods — in
 pure Python and in C++. The pure-Python experiment then goes after the two numbers that decide
@@ -159,3 +159,25 @@ tolerance, so the epochs-versus-κ relationship is measured on three points rath
 collinearity demonstration uses one seed and one noise level. And the comparison against C++ is
 against one recorded run of that executable, quoted in this file rather than computed here — the
 pure-Python half of it is reproducible, the C++ half is a transcription.
+
+## NumPy reproduction
+
+Measured on 2026-10-20 with CPython 3.14.7 and NumPy 2.5.4 on macOS 26.3.1 (arm64).
+Command: `python -m ml_scratch.numpy.linear_regression.experiment` after installing `.[numpy]`.
+Reported quantities are measured losses, predictions, and iteration counts from the current run;
+no runtime comparison is claimed. See the [NumPy implementation](numpy/README.md) for conventions.
+
+Seed `20260903` uses the same nine training rows and three test rows for `y = 1.5 + 2x`
+as the Python reference. The closed form returned weight `2.0`, bias `1.5`, and zero test MSE.
+At target training MSE `1e-12`, batch GD (rate `0.10`) took 64 epochs, SGD (rate `0.03`) took 25,
+and mini-batch GD (rate `0.05`, size 3) took 44. Test MSEs were respectively `8.866e-13`,
+`4.443e-13`, and `9.585e-13`.
+
+The Hessian stability threshold `2/lambda_max` was `0.6`. After 1,000 epochs, rates at 99% and
+101% of that threshold gave training MSE `1.888e-17` and `1.057e+18` respectively.
+At 90% of each problem's own threshold and target MSE `1e-10`, scaling feature two by 100
+raised the condition estimate to `12762.47` and required 99,481 epochs. Standardization reduced
+the estimate to `1.13` and required 69 epochs. At scale 1 the raw run took 56 epochs.
+The near-collinearity runs used the command's seed; at separation `1e-6` the fitted weights were
+approximately `(-310.7939, 315.7940)` with MSE `3.339e-7`, while `1e-8` was refused as singular
+to working precision. These diagnostics use synthetic fixtures, not a real-world performance test.

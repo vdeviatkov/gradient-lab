@@ -2,7 +2,7 @@
 
 [All topics](../../README.md#topics) · [Idea and mathematics](idea.md) · [Setup](../../docs/getting-started.md)
 
-**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [Backend status](../../README.md#topics)
+**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [Backend status](../../README.md#topics)
 
 The perceptron milestone ended with a failure it could not fix: XOR is not linearly separable, so
 one straight boundary cannot sort its four rows. This milestone adds a hidden layer and shows the
@@ -126,3 +126,29 @@ longer budget would change the number, though not the ordering. The plateau at `
 identified by its loss, accuracy, probabilities and gradient norm, not by characterizing the
 weights that produce it. And the representational claim about one hidden unit is proved from the
 monotonicity of `tanh` and `σ`; the fifty seeds only confirm it.
+
+## NumPy reproduction
+
+Measured on 2026-10-20 with CPython 3.14.7 and NumPy 2.5.4 on macOS 26.3.1 (arm64).
+Command: `python -m ml_scratch.numpy.mlp.experiment` after installing `.[numpy]`.
+Reported quantities are measured losses, predictions, and iteration counts from the current run;
+no runtime comparison is claimed. See the [NumPy implementation](numpy/README.md) for conventions.
+
+At headline seed `7`, four hidden units, learning rate `0.5`, target BCE `0.02`, and a
+10,000-epoch budget, XOR converged in 344 epochs with BCE `0.019932` and accuracy `1.0000`.
+The maximum absolute gradient disagreement against central differences (epsilon `1e-5`) was
+`1.053e-11` before training. The full XOR truth table is used throughout.
+
+The default width sweep used seeds `0..9`, with the same rate, target, and budget:
+
+| Hidden units | Solved | Median epochs among solved runs |
+|---:|---:|---:|
+| 1 | 0/10 | — |
+| 2 | 9/10 | 453.0 |
+| 3 | 10/10 | 360.5 |
+| 4 | 10/10 | 342.5 |
+| 8 | 10/10 | 283.5 |
+
+These are measured initialization outcomes on a complete truth table, not a generalization
+estimate or a guarantee across all seeds. The NumPy sweep is smaller than the scalar report's
+50-seed sweep; success fractions should be compared only at equal budgets.

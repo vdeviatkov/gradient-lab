@@ -2,7 +2,7 @@
 
 [All topics](../../README.md#topics) · [Idea and mathematics](idea.md) · [Setup](../../docs/getting-started.md)
 
-**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [Backend status](../../README.md#topics)
+**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [Backend status](../../README.md#topics)
 
 The C++ and pure-Python experiments build a synthetic dataset whose structure is known in advance, then checks
 whether unsupervised methods recover it.
@@ -127,3 +127,30 @@ fixture; they do not establish general performance on arbitrary datasets.
 See the [Python implementation notes](python/README.md) for APIs, convergence reporting, tests,
 and deliberate solver-safety differences. No labels enter PCA fitting, k-means fitting, or
 cluster-count selection.
+
+## NumPy reproduction
+
+Measured on 2026-10-20 with CPython 3.14.7 and NumPy 2.5.4 on macOS 26.3.1 (arm64).
+Command: `python -m ml_scratch.numpy.pca_kmeans.experiment` after installing `.[numpy]`.
+Reported quantities are measured losses, predictions, and iteration counts from the current run;
+no runtime comparison is claimed. See the [NumPy implementation](numpy/README.md) for conventions.
+
+Seed `20260907` reuses the scalar splitmix64 Gaussian fixture: 120 rows, four features,
+three groups, with train/validation/test sizes 72/24/24. PCA is centered using training means only;
+no standardization is applied. K-means uses 10 restarts, 300 iterations, squared-movement tolerance
+`1e-12`, and restart seeds `20260907..20260916`.
+
+The first two variance ratios were `0.608547` and `0.391192`. Test reconstruction MSE per feature
+at ranks 1–4 was `1.836722`, `0.000975`, `0.000375`, and approximately zero. Validation inertias
+for k=1–6 were `423.446842`, `164.539913`, `24.781671`, `18.805875`, `16.584257`, `16.023206`;
+the elbow selected k=3 without labels.
+
+| Model | Train inertia | Test inertia | Test purity |
+|---|---:|---:|---:|
+| One-cluster baseline | 1288.962690 | 396.979729 | 0.333333 |
+| Raw k-means++ | 80.253355 | 20.942124 | 1.000000 |
+| Raw random samples | 80.253355 | 20.942124 | 1.000000 |
+| PCA-2 k-means++ | 79.917241 | 20.848189 | 1.000000 |
+
+All selected runs converged. Projection changes the coordinate space, so raw and projected inertia
+are not interchangeable measures of clustering quality; purity is reported at the same selected k.

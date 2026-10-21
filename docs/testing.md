@@ -7,12 +7,13 @@ Run commands from the repository root after following [setup](getting-started.md
 ## Python and repository tooling
 
 ```bash
+python -m pip install -e ".[dev,numpy]"
 python -m pytest
 ruff check .
 python scripts/check_docs.py
 ```
 
-`pytest` runs topic-local `python/tests/`, shared fixture/numerics tests in `tests/python/`,
+`pytest` runs topic-local `python/tests/` and `numpy/tests/`, shared fixture/numerics tests in `tests/python/`,
 and development-tool tests in `tests/tooling/`. Ruff checks Python code. The documentation checker validates local Markdown
 file/directory links and Markdown heading anchors in tracked and non-ignored new documentation;
 it also rejects maintained documents without a navigation path from the root README.

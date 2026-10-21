@@ -1,6 +1,6 @@
 # PCA and k-means mathematics
 
-[Topic and experiment](README.md) · [C++](cpp/README.md) · [Python](python/README.md)
+[Topic and experiment](README.md) · [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md)
 
 Both algorithms in this milestone are unsupervised: they see only the feature matrix
 $X \in \mathbb{R}^{n \times d}$ and never the labels used later for evaluation.

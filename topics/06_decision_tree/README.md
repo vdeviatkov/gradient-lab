@@ -2,9 +2,9 @@
 
 [All topics](../../README.md#topics) · [Idea and mathematics](idea.md) · [Setup](../../docs/getting-started.md)
 
-**Implementations:** [C++](cpp/README.md) · [Backend status](../../README.md#topics)
+**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [Backend status](../../README.md#topics)
 
-This C++ experiment measures how depth control and pruning change overfitting, rather than
+The C++ and pure-Python experiments measure how depth control and pruning change overfitting, rather than
 reporting training accuracy alone.
 
 ## Dataset
@@ -39,6 +39,9 @@ library.
 cmake -S . -B build
 cmake --build build
 ./build/cpp_decision_tree
+
+# Python (after installing the checkout)
+python -m ml_scratch.pure.decision_tree.experiment
 ```
 
 The executable prints only values measured during the current run. It exits unsuccessfully unless
@@ -85,3 +88,13 @@ collapsing a node discards its whole subtree. It traded 14 points of training ac
 points of validation accuracy and 7 points of test accuracy, and its test accuracy also beat the
 best pre-pruned tree in the depth sweep (`0.8733` against `0.8600` at the selected depth). Only the
 validation improvement was optimized for; the test figures were measured once, afterwards.
+
+## Python reproduction
+
+Measured on 2026-10-20 with CPython 3.14.7, seed `20260908`. The Python depth sweep,
+selected depth (2), Gini/entropy validation and test accuracies, baseline, and pruning
+statistics match the C++ results above to the displayed four decimal places. The unlimited
+tree has 95 nodes; pruning performs four collapses and leaves 13 nodes, 7 leaves, depth 5,
+with train/validation/test accuracy `0.8567 / 0.8400 / 0.8733`.
+The Python generator uses the same splitmix64 stream and Box-Muller draw order;
+platform math-library rounding can still differ in the last bits.
