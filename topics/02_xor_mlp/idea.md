@@ -1,6 +1,6 @@
 # Two-layer MLP mathematics for XOR
 
-[Topic and experiment](README.md) · [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md)
+[Topic and experiment](README.md) · [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [PyTorch](pytorch/README.md)
 
 A single affine boundary cannot represent XOR. The fix is a hidden nonlinear layer, implemented
 identically in pure Python and C++ with $h$ units. For input $x = (x_1, x_2)$, the forward pass is

@@ -26,7 +26,9 @@ Optional dependencies are available with `python -m pip install -e ".[numpy]"`,
 `python -m pip install -e ".[pytorch]"`, and `python -m pip install -e ".[plotting]"`.
 NumPy implementations for topics 01–05 are available; for example,
 `python -m ml_scratch.numpy.perceptron.experiment`. See [NumPy conventions](implementations/numpy.md)
-for all commands. To run the full Python test suite, install `.[dev,numpy]`.
+for all commands. PyTorch versions for the same topics are available under `ml_scratch.pytorch`; see
+[PyTorch conventions](implementations/pytorch.md). To run the full Python test suite, install
+`.[dev,numpy,pytorch]`.
 Check [implementation status](../README.md#topics) for other backends.
 
 ## C++

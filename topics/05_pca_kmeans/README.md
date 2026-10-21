@@ -2,7 +2,7 @@
 
 [All topics](../../README.md#topics) · [Idea and mathematics](idea.md) · [Setup](../../docs/getting-started.md)
 
-**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [Backend status](../../README.md#topics)
+**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [PyTorch](pytorch/README.md) · [Backend status](../../README.md#topics)
 
 The C++ and pure-Python experiments build a synthetic dataset whose structure is known in advance, then checks
 whether unsupervised methods recover it.
@@ -154,3 +154,23 @@ the elbow selected k=3 without labels.
 
 All selected runs converged. Projection changes the coordinate space, so raw and projected inertia
 are not interchangeable measures of clustering quality; purity is reported at the same selected k.
+
+## PyTorch reproduction
+
+Measured on 2026-10-21 using CPython 3.14.7 and PyTorch 2.14.1 on macOS 26.3.1 (arm64),
+CPU float64. Command: `python -m ml_scratch.pytorch.pca_kmeans.experiment` after installing
+`.[pytorch]`. See the [PyTorch implementation](pytorch/README.md) for contracts and tests.
+
+Seed `20260907` reuses the splitmix64 Gaussian fixture with 120 samples, four features, three
+groups, and train/validation/test sizes 72/24/24. PCA uses training centering without scaling.
+K-means uses 10 restarts (seeds `20260907..20260916`), 300-iteration budgets, and squared-movement
+tolerance `1e-12`.
+
+The first two variance ratios were `0.608547` and `0.391192`; test reconstruction MSE per feature
+at ranks 1–4 was `1.836722`, `0.000975`, `0.000375`, and approximately zero. Validation inertias
+at k=1–6 were `423.446842`, `164.539913`, `24.781671`, `18.805875`, `16.584257`, `16.023206`,
+selecting k=3 without labels. Raw k-means++ test inertia/purity were `20.942124 / 1.000000`, versus
+the one-cluster baseline's `396.979729 / 0.333333`. Random-sample initialization reached the same
+raw solution. PCA-2 k-means++ gave test inertia `20.848189` and purity `1.000000`. All selected
+runs converged. Raw and projected inertia are in different coordinate spaces, so those values
+are not interchangeable measures of quality. These outcomes match NumPy to the shown precision.

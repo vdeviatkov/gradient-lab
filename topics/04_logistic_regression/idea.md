@@ -1,6 +1,6 @@
 # Binary logistic regression mathematics
 
-[Topic and experiment](README.md) · [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md)
+[Topic and experiment](README.md) · [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [PyTorch](pytorch/README.md)
 
 Binary logistic regression maps an affine score to a probability:
 

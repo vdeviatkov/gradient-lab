@@ -2,7 +2,7 @@
 
 [All topics](../../README.md#topics) · [Idea and mathematics](idea.md) · [Setup](../../docs/getting-started.md)
 
-**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [Backend status](../../README.md#topics)
+**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [PyTorch](pytorch/README.md) · [Backend status](../../README.md#topics)
 
 The perceptron milestone ended with a failure it could not fix: XOR is not linearly separable, so
 one straight boundary cannot sort its four rows. This milestone adds a hidden layer and shows the
@@ -152,3 +152,20 @@ The default width sweep used seeds `0..9`, with the same rate, target, and budge
 These are measured initialization outcomes on a complete truth table, not a generalization
 estimate or a guarantee across all seeds. The NumPy sweep is smaller than the scalar report's
 50-seed sweep; success fractions should be compared only at equal budgets.
+
+## PyTorch reproduction
+
+Measured on 2026-10-21 using CPython 3.14.7 and PyTorch 2.14.1 on macOS 26.3.1 (arm64),
+CPU float64. Command: `python -m ml_scratch.pytorch.mlp.experiment` after installing
+`.[pytorch]`. See the [PyTorch implementation](pytorch/README.md) for contracts and tests.
+
+The four-unit headline network at seed `7`, rate `0.5`, target BCE `0.02`, and 10,000-epoch
+budget solved the complete XOR truth table in 344 epochs, with BCE `0.019932` and accuracy
+`1.0000`. Before training, maximum absolute manual/central-difference gradient error was
+`1.061e-11` at epsilon `1e-5`; tests independently compare the manual gradients with autograd.
+
+The default width sweep over seeds `0..9` matched the NumPy outcomes: widths 1, 2, 3, 4, and 8
+solved `0/10`, `9/10`, `10/10`, `10/10`, and `10/10` trials. Median epochs among solved trials
+were respectively undefined, `453.0`, `360.5`, `342.5`, and `283.5`. These are initialization
+sensitivity measurements on the whole truth table. They use ten seeds rather than the scalar
+report's fifty; pass `--seeds 50` for that budget.

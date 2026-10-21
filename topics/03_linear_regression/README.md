@@ -2,7 +2,7 @@
 
 [All topics](../../README.md#topics) · [Idea and mathematics](idea.md) · [Setup](../../docs/getting-started.md)
 
-**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [Backend status](../../README.md#topics)
+**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [PyTorch](pytorch/README.md) · [Backend status](../../README.md#topics)
 
 Four ways to fit the same line — an exact closed-form reference and three gradient methods — in
 pure Python and in C++. The pure-Python experiment then goes after the two numbers that decide
@@ -181,3 +181,26 @@ the estimate to `1.13` and required 69 epochs. At scale 1 the raw run took 56 ep
 The near-collinearity runs used the command's seed; at separation `1e-6` the fitted weights were
 approximately `(-310.7939, 315.7940)` with MSE `3.339e-7`, while `1e-8` was refused as singular
 to working precision. These diagnostics use synthetic fixtures, not a real-world performance test.
+
+## PyTorch reproduction
+
+Measured on 2026-10-21 using CPython 3.14.7 and PyTorch 2.14.1 on macOS 26.3.1 (arm64),
+CPU float64. Command: `python -m ml_scratch.pytorch.linear_regression.experiment` after installing
+`.[pytorch]`. See the [PyTorch implementation](pytorch/README.md) for contracts and tests.
+
+Seed `20260903` uses the same nine-row exact-line training fixture and three held-out test rows
+as the NumPy experiment. The closed form returned weight `2.0`, bias `1.5`, and zero test MSE.
+Batch GD, SGD, and mini-batch GD took 64, 25, and 44 epochs at their respective rates `0.10`,
+`0.03`, and `0.05` (mini-batch size 3), reaching target training MSE `1e-12`. Their test MSEs were
+`8.866e-13`, `4.443e-13`, and `9.585e-13`.
+
+The stability threshold `2/lambda_max` was `0.6`; rates at 99% and 101% of it produced MSE
+`1.888e-17` and `1.057e+18` after 1,000 epochs. At feature scale 100, the raw condition estimate
+was `12762.47`, requiring 99,481 epochs at 90% of the stability threshold to reach MSE `1e-10`.
+Standardization reduced those figures to `1.13` and 69 epochs.
+
+At near-collinearity separation `1e-6`, weights were approximately `(-310.8812, 315.8813)` with
+MSE `3.339e-7`. The NumPy weights differ slightly on this ill-conditioned normal equation while
+both losses agree to the displayed precision; individual coefficients are unstable here.
+Separation `1e-8` was refused as singular to working precision. The diagnostic data uses the
+command's seed throughout. These are synthetic accuracy/convergence measurements, not timings.

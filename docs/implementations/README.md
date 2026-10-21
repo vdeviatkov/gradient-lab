@@ -7,6 +7,7 @@ Implemented backends have shared tooling guides:
 - [C++20](cpp.md): compilation, includes, core/support linking, and source ownership.
 - [Pure Python](pure-python.md): package mapping, model imports, and experiment CLIs.
 - [NumPy](numpy.md): vectorized models, explicit algorithms, and reference comparisons.
+- [PyTorch](pytorch.md): CPU tensors, manual algorithms, and autograd gradient checks.
 
 ## Additional backends
 
@@ -19,7 +20,7 @@ Topics 01–05 are implemented. See [NumPy conventions](numpy.md) for commands a
 
 ### PyTorch
 
-Use tensors and compare hand-derived gradients with automatic differentiation.
+Topics 01–05 are implemented. See [PyTorch conventions](pytorch.md) for commands and gradient checks.
 
 ### JAX
 

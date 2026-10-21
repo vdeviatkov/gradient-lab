@@ -2,7 +2,7 @@
 
 [All topics](../../README.md#topics) · [Idea and mathematics](idea.md) · [Setup](../../docs/getting-started.md)
 
-**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [Backend status](../../README.md#topics)
+**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [PyTorch](pytorch/README.md) · [Backend status](../../README.md#topics)
 
 The pure-Python and C++ experiments use a small, inspectable one-feature dataset with overlapping classes and a
 3:1 negative-to-positive training imbalance. Training, validation, and test examples are fixed in
@@ -76,3 +76,18 @@ Validation F1 selected threshold `0.20` with F1 `0.666667`.
 
 The selected threshold improves the optimized metric, F1, while reducing accuracy on this small
 held-out test split. The test set was not used to select it.
+
+## PyTorch reproduction
+
+Measured on 2026-10-21 using CPython 3.14.7 and PyTorch 2.14.1 on macOS 26.3.1 (arm64),
+CPU float64. Command: `python -m ml_scratch.pytorch.logistic_regression.experiment` after installing
+`.[pytorch]`. See the [PyTorch implementation](pytorch/README.md) for contracts and tests.
+
+Seed `20260904`, rate `0.1`, mini-batch size 4, positive class weight 1, and target BCE `0.30`
+reproduced the scalar and NumPy fixed-split experiment. Training stopped in 246 epochs with
+BCE `0.299995`, weight `2.210806`, and bias `-2.255443`. Validation F1 selected threshold `0.20`
+with F1 `0.666667`. Test F1 was `0.000000` for the majority baseline, `0.400000` at threshold
+0.50, and `0.500000` at the selected threshold. Test recall rose from `0.5` to `1.0` while
+accuracy fell from `0.7` to `0.6`; selection optimizes F1, not accuracy. Test data was not used
+for selection. Weighted gradient tests compare the explicit derivatives with autograd and central
+differences, including positive weight `3.7`.

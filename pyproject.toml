@@ -38,11 +38,23 @@ ml-numpy-linear-regression = "ml_scratch.numpy.linear_regression.experiment:main
 ml-numpy-logistic-regression = "ml_scratch.numpy.logistic_regression.experiment:main"
 ml-numpy-pca-kmeans = "ml_scratch.numpy.pca_kmeans.experiment:main"
 
+ml-pytorch-perceptron = "ml_scratch.pytorch.perceptron.experiment:main"
+ml-pytorch-mlp = "ml_scratch.pytorch.mlp.experiment:main"
+ml-pytorch-linear-regression = "ml_scratch.pytorch.linear_regression.experiment:main"
+ml-pytorch-logistic-regression = "ml_scratch.pytorch.logistic_regression.experiment:main"
+ml-pytorch-pca-kmeans = "ml_scratch.pytorch.pca_kmeans.experiment:main"
+
 [tool.setuptools]
 packages = [
   "ml_scratch",
   "ml_scratch.pure",
   "ml_scratch.numpy",
+  "ml_scratch.pytorch",
+  "ml_scratch.pytorch.perceptron",
+  "ml_scratch.pytorch.mlp",
+  "ml_scratch.pytorch.linear_regression",
+  "ml_scratch.pytorch.logistic_regression",
+  "ml_scratch.pytorch.pca_kmeans",
   "ml_scratch.numpy.perceptron",
   "ml_scratch.numpy.mlp",
   "ml_scratch.numpy.linear_regression",
@@ -60,6 +72,12 @@ packages = [
 "ml_scratch" = "shared/python/ml_scratch"
 "ml_scratch.pure" = "shared/python/ml_scratch/pure"
 "ml_scratch.numpy" = "shared/python/ml_scratch/numpy"
+"ml_scratch.pytorch" = "shared/python/ml_scratch/pytorch"
+"ml_scratch.pytorch.perceptron" = "topics/01_perceptron_logic_gates/pytorch"
+"ml_scratch.pytorch.mlp" = "topics/02_xor_mlp/pytorch"
+"ml_scratch.pytorch.linear_regression" = "topics/03_linear_regression/pytorch"
+"ml_scratch.pytorch.logistic_regression" = "topics/04_logistic_regression/pytorch"
+"ml_scratch.pytorch.pca_kmeans" = "topics/05_pca_kmeans/pytorch"
 "ml_scratch.numpy.perceptron" = "topics/01_perceptron_logic_gates/numpy"
 "ml_scratch.numpy.mlp" = "topics/02_xor_mlp/numpy"
 "ml_scratch.numpy.linear_regression" = "topics/03_linear_regression/numpy"

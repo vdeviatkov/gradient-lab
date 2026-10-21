@@ -26,6 +26,12 @@ topics/<number>_<topic>/
     model.py                    # Vectorized algorithm, preserving the idea being taught
     experiment.py
     tests/
+  pytorch/                      # Present when the PyTorch implementation exists
+    README.md
+    __init__.py
+    model.py                    # Tensor algorithms and explicit/autograd gradient checks
+    experiment.py
+    tests/
 shared/                         # Common infrastructure used by multiple topics
 docs/                           # Setup, backend conventions, design, contribution guidance
 tests/                          # Cross-topic integration and repository-tool checks
@@ -54,7 +60,8 @@ explicit package map installs topic-local packages without mirroring source into
 Existing model include names, Python model imports, installed CLI names, and `build/cpp_*`
 executables are retained. The n-gram baseline now has its own `ml_scratch/char_ngram.hpp` header
 in topic 15 rather than being declared in the shared corpus header. Experiment module paths use `ml_scratch.pure.<model>.experiment` or
-`ml_scratch.numpy.<model>.experiment`; see [NumPy conventions](implementations/numpy.md).
+`ml_scratch.numpy.<model>.experiment`, and PyTorch uses `ml_scratch.pytorch.<model>.experiment`.
+See [NumPy conventions](implementations/numpy.md) and [PyTorch conventions](implementations/pytorch.md).
 
 ## Local artifacts
 
