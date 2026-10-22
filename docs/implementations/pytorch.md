@@ -10,13 +10,14 @@ python -m ml_scratch.pytorch.mlp.experiment
 python -m ml_scratch.pytorch.linear_regression.experiment
 python -m ml_scratch.pytorch.logistic_regression.experiment
 python -m ml_scratch.pytorch.pca_kmeans.experiment
+python -m ml_scratch.pytorch.decision_tree.experiment
 python -m pytest topics/*/pytorch/tests
 ```
 
-Topics 01–05 own implementations under `pytorch/`, installed as `ml_scratch.pytorch.<model>`
+Topics 01–06 own implementations under `pytorch/`, installed as `ml_scratch.pytorch.<model>`
 through the explicit [package map](../../pyproject.toml). Their `ml-pytorch-*` entry points invoke
 the same experiments. Pure-Python and NumPy imports do not require Torch. The existing `pytorch`
-extra also installs torchvision for later image topics; these five implementations use Torch alone.
+extra also installs torchvision for later image topics; these six implementations use Torch alone.
 
 These are CPU float64 educational models. Inputs are converted to CPU float64 and detached at
 the boundary; externally supplied autograd graphs do not flow through the public data API. Model
@@ -34,9 +35,9 @@ Manual gradients train the MLP, linear regression, and logistic regression under
 Their `autograd_gradient` methods independently build differentiable forward objectives on cloned
 parameters using `torch.enable_grad()` and `torch.autograd.grad`. They do not call manual gradient
 code, mutate model parameters, or accumulate `.grad` fields. Tests also use central differences
-and scalar derivatives. Perceptron updates, PCA, and k-means remain explicit discrete algorithms.
-No `nn.Linear`, optimizer, linear-system solver, eigensolver, or clustering estimator replaces
-an algorithm being taught; library solvers are used only as independent test oracles.
+and scalar derivatives. Perceptron updates, PCA, k-means, and decision trees remain explicit
+discrete algorithms. No `nn.Linear`, optimizer, linear-system solver, eigensolver, clustering or
+tree estimator replaces an algorithm being taught; library solvers are only test oracles.
 
 Local `random.Random` streams preserve initialization and shuffling across Python, NumPy, and
 Torch. No global seed, default dtype, or thread setting is modified. Floating-point reduction

@@ -16,11 +16,11 @@ backend folders or separate placeholder documents.
 
 ### NumPy
 
-Topics 01–05 are implemented. See [NumPy conventions](numpy.md) for commands and numerical contracts.
+Topics 01–06 are implemented. See [NumPy conventions](numpy.md) for commands and numerical contracts.
 
 ### PyTorch
 
-Topics 01–05 are implemented. See [PyTorch conventions](pytorch.md) for commands and gradient checks.
+Topics 01–06 are implemented. See [PyTorch conventions](pytorch.md) for commands and gradient checks.
 
 ### JAX
 

@@ -1,6 +1,6 @@
 # Decision tree classification mathematics
 
-[Topic and experiment](README.md) · [C++](cpp/README.md) · [Python](python/README.md)
+[Topic and experiment](README.md) · [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [PyTorch](pytorch/README.md)
 
 A classification tree partitions feature space with axis-aligned splits. Each internal node holds a
 feature $j$ and a threshold $t$ and sends a sample left when $x_j \le t$; each leaf predicts the

@@ -2,10 +2,10 @@
 
 [All topics](../../README.md#topics) · [Idea and mathematics](idea.md) · [Setup](../../docs/getting-started.md)
 
-**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [Backend status](../../README.md#topics)
+**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [PyTorch](pytorch/README.md) · [Backend status](../../README.md#topics)
 
-The C++ and pure-Python experiments measure how depth control and pruning change overfitting, rather than
-reporting training accuracy alone.
+The experiments in every backend measure how depth control and pruning change overfitting, rather
+than reporting training accuracy alone.
 
 ## Dataset
 
@@ -42,6 +42,8 @@ cmake --build build
 
 # Python (after installing the checkout)
 python -m ml_scratch.pure.decision_tree.experiment
+python -m ml_scratch.numpy.decision_tree.experiment    # needs .[numpy]
+python -m ml_scratch.pytorch.decision_tree.experiment  # needs .[pytorch]
 ```
 
 The executable prints only values measured during the current run. It exits unsuccessfully unless
@@ -98,3 +100,20 @@ tree has 95 nodes; pruning performs four collapses and leaves 13 nodes, 7 leaves
 with train/validation/test accuracy `0.8567 / 0.8400 / 0.8733`.
 The Python generator uses the same splitmix64 stream and Box-Muller draw order;
 platform math-library rounding can still differ in the last bits.
+
+## NumPy and PyTorch reproduction
+
+Measured on 2026-10-22 with CPython 3.14.7, NumPy 2.5.4, and PyTorch 2.14.1 (CPU float64) on
+macOS 26.3.1 (arm64), seed `20260908`. Commands:
+`python -m ml_scratch.numpy.decision_tree.experiment` and
+`python -m ml_scratch.pytorch.decision_tree.experiment`.
+
+Both backends printed identical output. Every row of the depth sweep matches the C++ table above
+to four decimal places, including leaf counts, and validation again selects `max_depth = 2`. At
+that depth, entropy gave `0.8433 / 0.7933 / 0.8667` train/validation/test. The unlimited tree has
+95 nodes, 48 leaves, and depth 12. Reduced-error pruning made four collapses and left 13 nodes,
+7 leaves, and depth 5, with train/validation/test accuracy `0.8567 / 0.8400 / 0.8733`. The
+majority baseline is `0.4867`. Beyond matching metrics, the tests check that both backends build
+the same node-by-node tree as pure Python and prune it in the same sequence. No runtime comparison
+is claimed. See the [NumPy](numpy/README.md) and [PyTorch](pytorch/README.md) notes for the
+vectorized split sweep and the path-matrix pruning score.

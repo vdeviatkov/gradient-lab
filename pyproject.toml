@@ -37,12 +37,14 @@ ml-numpy-mlp = "ml_scratch.numpy.mlp.experiment:main"
 ml-numpy-linear-regression = "ml_scratch.numpy.linear_regression.experiment:main"
 ml-numpy-logistic-regression = "ml_scratch.numpy.logistic_regression.experiment:main"
 ml-numpy-pca-kmeans = "ml_scratch.numpy.pca_kmeans.experiment:main"
+ml-numpy-decision-tree = "ml_scratch.numpy.decision_tree.experiment:main"
 
 ml-pytorch-perceptron = "ml_scratch.pytorch.perceptron.experiment:main"
 ml-pytorch-mlp = "ml_scratch.pytorch.mlp.experiment:main"
 ml-pytorch-linear-regression = "ml_scratch.pytorch.linear_regression.experiment:main"
 ml-pytorch-logistic-regression = "ml_scratch.pytorch.logistic_regression.experiment:main"
 ml-pytorch-pca-kmeans = "ml_scratch.pytorch.pca_kmeans.experiment:main"
+ml-pytorch-decision-tree = "ml_scratch.pytorch.decision_tree.experiment:main"
 
 [tool.setuptools]
 packages = [
@@ -55,11 +57,13 @@ packages = [
   "ml_scratch.pytorch.linear_regression",
   "ml_scratch.pytorch.logistic_regression",
   "ml_scratch.pytorch.pca_kmeans",
+  "ml_scratch.pytorch.decision_tree",
   "ml_scratch.numpy.perceptron",
   "ml_scratch.numpy.mlp",
   "ml_scratch.numpy.linear_regression",
   "ml_scratch.numpy.logistic_regression",
   "ml_scratch.numpy.pca_kmeans",
+  "ml_scratch.numpy.decision_tree",
   "ml_scratch.pure.perceptron",
   "ml_scratch.pure.mlp",
   "ml_scratch.pure.linear_regression",
@@ -78,11 +82,13 @@ packages = [
 "ml_scratch.pytorch.linear_regression" = "topics/03_linear_regression/pytorch"
 "ml_scratch.pytorch.logistic_regression" = "topics/04_logistic_regression/pytorch"
 "ml_scratch.pytorch.pca_kmeans" = "topics/05_pca_kmeans/pytorch"
+"ml_scratch.pytorch.decision_tree" = "topics/06_decision_tree/pytorch"
 "ml_scratch.numpy.perceptron" = "topics/01_perceptron_logic_gates/numpy"
 "ml_scratch.numpy.mlp" = "topics/02_xor_mlp/numpy"
 "ml_scratch.numpy.linear_regression" = "topics/03_linear_regression/numpy"
 "ml_scratch.numpy.logistic_regression" = "topics/04_logistic_regression/numpy"
 "ml_scratch.numpy.pca_kmeans" = "topics/05_pca_kmeans/numpy"
+"ml_scratch.numpy.decision_tree" = "topics/06_decision_tree/numpy"
 "ml_scratch.pure.perceptron" = "topics/01_perceptron_logic_gates/python"
 "ml_scratch.pure.mlp" = "topics/02_xor_mlp/python"
 "ml_scratch.pure.linear_regression" = "topics/03_linear_regression/python"
