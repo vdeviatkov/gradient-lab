@@ -14,10 +14,11 @@ python -m ml_scratch.numpy.logistic_regression.experiment
 python -m ml_scratch.numpy.pca_kmeans.experiment
 python -m ml_scratch.numpy.decision_tree.experiment
 python -m ml_scratch.numpy.backpropagation.experiment
+python -m ml_scratch.numpy.softmax_mnist.experiment
 python -m pytest topics/*/numpy/tests
 ```
 
-Topics 01–07 own their models, experiments, README, exports, and tests under `numpy/`. The explicit
+Topics 01–08 own their models, experiments, README, exports, and tests under `numpy/`. The explicit
 package mapping in [pyproject.toml](../../pyproject.toml) installs them as
 `ml_scratch.numpy.<model>`. No source is mirrored into a second package tree. The corresponding
 `ml-numpy-*` commands invoke the same experiment modules. Pure-Python imports do not need NumPy.

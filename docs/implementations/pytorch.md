@@ -12,13 +12,14 @@ python -m ml_scratch.pytorch.logistic_regression.experiment
 python -m ml_scratch.pytorch.pca_kmeans.experiment
 python -m ml_scratch.pytorch.decision_tree.experiment
 python -m ml_scratch.pytorch.backpropagation.experiment
+python -m ml_scratch.pytorch.softmax_mnist.experiment
 python -m pytest topics/*/pytorch/tests
 ```
 
-Topics 01–07 own implementations under `pytorch/`, installed as `ml_scratch.pytorch.<model>`
+Topics 01–08 own implementations under `pytorch/`, installed as `ml_scratch.pytorch.<model>`
 through the explicit [package map](../../pyproject.toml). Their `ml-pytorch-*` entry points invoke
 the same experiments. Pure-Python and NumPy imports do not require Torch. The existing `pytorch`
-extra also installs torchvision for later image topics; these seven implementations use Torch alone.
+extra also installs torchvision for later image topics; these eight implementations use Torch alone.
 
 These are CPU float64 educational models. Inputs are converted to CPU float64 and detached at
 the boundary; externally supplied autograd graphs do not flow through the public data API. Model
@@ -32,14 +33,14 @@ and parameter-gradient arrays return tensors. MLP parameter snapshots use immuta
 The perceptron, MLP, and linear regression continue current parameters on fit; logistic regression
 resets to zero on every fit, matching the existing reference contracts.
 
-Manual gradients train the MLP, linear regression, logistic regression, and the general
-backpropagation network under `torch.no_grad()`. Their `autograd_gradient` methods independently
-build differentiable forward objectives on cloned parameters using `torch.enable_grad()` and
-`torch.autograd.grad`. They do not call manual gradient code, mutate model parameters, or
-accumulate `.grad` fields. Tests also use central differences
-and scalar derivatives. Perceptron updates, PCA, k-means, and decision trees remain explicit
-discrete algorithms. No `nn.Linear`, optimizer, linear-system solver, eigensolver, clustering or
-tree estimator replaces an algorithm being taught; library solvers are only test oracles.
+Manual gradients train the MLP, linear regression, logistic regression, the general backpropagation
+network, and softmax regression under `torch.no_grad()`. Their `autograd_gradient` methods
+independently build differentiable forward objectives on cloned parameters using
+`torch.enable_grad()` and `torch.autograd.grad`. They do not call manual gradient code, mutate model
+parameters, or accumulate `.grad` fields. Tests also use central differences and scalar derivatives.
+Perceptron updates, PCA, k-means, and decision trees remain explicit discrete algorithms. No
+`nn.Linear`, optimizer, linear-system solver, eigensolver, clustering or tree estimator replaces an
+algorithm being taught; library solvers are only test oracles.
 
 Local `random.Random` streams preserve initialization and shuffling across Python, NumPy, and
 Torch. No global seed, default dtype, or thread setting is modified. Floating-point reduction

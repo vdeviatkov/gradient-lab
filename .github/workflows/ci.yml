@@ -21,6 +21,13 @@ jobs:
         run: python -m pip install -e ".[dev,numpy,pytorch]"
       - name: Run tests
         run: pytest
+      # GitHub's runners have no GPU, so the Triton kernels run on Triton's CPU interpreter.
+      - name: Run Triton kernels on the CPU interpreter
+        env:
+          TRITON_INTERPRET: "1"
+        run: |
+          python -m pip install "triton>=3.0"
+          pytest topics/*/triton/tests
       - name: Run Ruff
         run: ruff check .
       - name: Check documentation links

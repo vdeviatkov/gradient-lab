@@ -8,6 +8,7 @@ Implemented backends have shared tooling guides:
 - [Pure Python](pure-python.md): package mapping, model imports, and experiment CLIs.
 - [NumPy](numpy.md): vectorized models, explicit algorithms, and reference comparisons.
 - [PyTorch](pytorch.md): CPU tensors, manual algorithms, and autograd gradient checks.
+- [Triton](triton.md): fused float64 GPU kernels, precision rules, and interpreter testing.
 
 ## Additional backends
 
@@ -16,11 +17,11 @@ backend folders or separate placeholder documents.
 
 ### NumPy
 
-Topics 01–07 are implemented. See [NumPy conventions](numpy.md) for commands and numerical contracts.
+Topics 01–08 are implemented. See [NumPy conventions](numpy.md) for commands and numerical contracts.
 
 ### PyTorch
 
-Topics 01–07 are implemented. See [PyTorch conventions](pytorch.md) for commands and gradient checks.
+Topics 01–08 are implemented. See [PyTorch conventions](pytorch.md) for commands and gradient checks.
 
 ### JAX
 
@@ -29,6 +30,7 @@ Explore functional transformations, automatic differentiation, vectorization, an
 ### Triton
 
 Teach GPU tiling, memory movement, and fusion where a standalone kernel adds educational value.
+Topic 08 is implemented. See [Triton conventions](triton.md) for hardware, precision, and testing.
 
 ## Adding a backend
 

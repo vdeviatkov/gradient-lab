@@ -24,11 +24,12 @@ Use each command's `--help` to inspect its options.
 
 Optional dependencies are available with `python -m pip install -e ".[numpy]"`,
 `python -m pip install -e ".[pytorch]"`, and `python -m pip install -e ".[plotting]"`.
-NumPy implementations for topics 01–07 are available; for example,
+NumPy implementations for topics 01–08 are available; for example,
 `python -m ml_scratch.numpy.perceptron.experiment`. See [NumPy conventions](implementations/numpy.md)
 for all commands. PyTorch versions for the same topics are available under `ml_scratch.pytorch`; see
 [PyTorch conventions](implementations/pytorch.md). To run the full Python test suite, install
-`.[dev,numpy,pytorch]`.
+`.[dev,numpy,pytorch]`. Triton kernels (topic 08) need Linux and a CUDA GPU, or run on Triton's
+CPU interpreter; see [Triton conventions](implementations/triton.md).
 Check [implementation status](../README.md#topics) for other backends.
 
 ## C++

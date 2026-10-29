@@ -33,7 +33,13 @@ def test_python_package_map_installs_topic_sources_without_a_mirror_tree():
     for name, location in mapping.items():
         directory = ROOT / location
         assert (directory / "__init__.py").is_file()
-        if name in {"ml_scratch", "ml_scratch.pure", "ml_scratch.numpy", "ml_scratch.pytorch"}:
+        if name in {
+            "ml_scratch",
+            "ml_scratch.pure",
+            "ml_scratch.numpy",
+            "ml_scratch.pytorch",
+            "ml_scratch.triton",
+        }:
             assert location.startswith("shared/python/")
         else:
             assert location.startswith("topics/")
@@ -45,7 +51,7 @@ def test_python_package_map_installs_topic_sources_without_a_mirror_tree():
             declared_topics.add(directory.resolve())
     assert declared_topics == {
         path.resolve()
-        for backend in ("python", "numpy", "pytorch")
+        for backend in ("python", "numpy", "pytorch", "triton")
         for path in (ROOT / "topics").glob(f"*/{backend}")
     }
     for entrypoint in config["project"]["scripts"].values():
@@ -60,6 +66,7 @@ def test_topic_algorithms_have_one_canonical_source_copy():
     files += list((ROOT / "topics").glob("*/python/model.py"))
     files += list((ROOT / "topics").glob("*/numpy/model.py"))
     files += list((ROOT / "topics").glob("*/pytorch/model.py"))
+    files += list((ROOT / "topics").glob("*/triton/model.py"))
     for path in files:
         if path.name == "main.cpp":
             continue
