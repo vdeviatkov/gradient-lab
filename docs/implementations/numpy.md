@@ -13,19 +13,21 @@ python -m ml_scratch.numpy.linear_regression.experiment
 python -m ml_scratch.numpy.logistic_regression.experiment
 python -m ml_scratch.numpy.pca_kmeans.experiment
 python -m ml_scratch.numpy.decision_tree.experiment
+python -m ml_scratch.numpy.backpropagation.experiment
 python -m pytest topics/*/numpy/tests
 ```
 
-Topics 01–06 own their models, experiments, README, exports, and tests under `numpy/`. The explicit
+Topics 01–07 own their models, experiments, README, exports, and tests under `numpy/`. The explicit
 package mapping in [pyproject.toml](../../pyproject.toml) installs them as
 `ml_scratch.numpy.<model>`. No source is mirrored into a second package tree. The corresponding
 `ml-numpy-*` commands invoke the same experiment modules. Pure-Python imports do not need NumPy.
 
-Use float64 arrays and vectorize numerical work while keeping the algorithm visible: gradients
-are derived by hand, normal equations use explicit pivoted elimination, PCA uses cyclic Jacobi
-rotations, k-means implements seeding, assignment, centroid updates, and restarts, and decision
-trees sweep every split with cumulative class counts and score pruning from visited-node paths.
-Library solvers may serve as independent test oracles; they do not replace the taught algorithms.
+Use float64 arrays and vectorize numerical work while keeping the algorithm visible: gradients are
+derived by hand (batched backpropagation is three matrix products per layer), normal equations use
+explicit pivoted elimination, PCA uses cyclic Jacobi rotations, k-means implements seeding,
+assignment, centroid updates, and restarts, and decision trees sweep every split with cumulative
+class counts and score pruning from visited-node paths. Library solvers may serve as independent
+test oracles; they do not replace the taught algorithms.
 
 The supervised models accept the same `(features, target)` pair datasets as the scalar reference.
 PCA and k-means accept rectangular matrices, and decision trees take separate feature and integer

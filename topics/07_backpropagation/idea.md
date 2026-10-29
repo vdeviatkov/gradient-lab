@@ -1,6 +1,6 @@
 # Backpropagation and numerical gradient checking
 
-[Topic and experiment](README.md) · [C++](cpp/README.md)
+[Topic and experiment](README.md) · [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [PyTorch](pytorch/README.md)
 
 The XOR milestone derived gradients for one fixed network. This milestone generalizes that
 derivation to any stack of fully connected layers and then verifies it numerically.

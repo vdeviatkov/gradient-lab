@@ -2,10 +2,10 @@
 
 [All topics](../../README.md#topics) · [Idea and mathematics](idea.md) · [Setup](../../docs/getting-started.md)
 
-**Implementations:** [C++](cpp/README.md) · [Backend status](../../README.md#topics)
+**Implementations:** [C++](cpp/README.md) · [Python](python/README.md) · [NumPy](numpy/README.md) · [PyTorch](pytorch/README.md) · [Backend status](../../README.md#topics)
 
-This C++ experiment verifies the general backpropagation implementation against finite differences,
-measures how the step size affects that verification, and then trains the network on a task a
+Every backend's experiment verifies the general backpropagation implementation against finite
+differences, measures how the step size affects that verification, and then trains the network on a task a
 linear model cannot solve.
 
 ## Dataset
@@ -43,6 +43,11 @@ binary cross-entropy.
 cmake -S . -B build
 cmake --build build
 ./build/cpp_backpropagation
+
+# Python (after installing the checkout)
+python -m ml_scratch.pure.backpropagation.experiment      # about two minutes
+python -m ml_scratch.numpy.backpropagation.experiment     # needs .[numpy]
+python -m ml_scratch.pytorch.backpropagation.experiment   # needs .[pytorch]
 ```
 
 The executable prints only values measured during the current run. It exits unsuccessfully unless
@@ -118,3 +123,57 @@ the degeneracy documented in the mathematics notes, and the reason gradient chec
 initialization or mid-training. The elementwise column shows why the norm ratio is the verdict:
 even at initialization a single near-zero parameter reports `1.116e-06`, four orders worse than the
 norm ratio, with no bug behind it.
+
+## Python, NumPy, and PyTorch reproduction
+
+Measured on 2026-10-24 with CPython 3.14.7, NumPy 2.5.4, and PyTorch 2.14.1 (CPU float64) on
+macOS 26.3.1 (arm64), seeds as above, using the three experiment commands listed under
+[Running it](#running-it). All three runs met every criterion listed there.
+
+Initialization reproduces the C++ network word for word: `std::mt19937` is rebuilt in Python, so
+every value that depends only on the parameters matches C++. The central and one-sided ratios for
+`epsilon = 1e-1` to `1e-3` match C++ to every printed digit, and so does the MLP's largest
+initial |gradient| of `9.913e-02`. The deliberate 0.1% error was caught at parameter 7 with ratio
+`1.051e-05` in every backend, as in C++.
+
+Below the optimal step, each ratio measures round-off in the loss, so those figures depend on how
+each backend sums:
+
+| Configuration | C++ | Python | NumPy | PyTorch |
+|---|---:|---:|---:|---:|
+| linear, squared error | 8.292e-12 | 4.432e-12 | 7.523e-12 | 4.432e-12 |
+| tanh hidden, squared error | 1.384e-11 | 1.371e-11 | 1.326e-11 | 1.281e-11 |
+| sigmoid output, squared error | 2.690e-11 | 2.238e-11 | 2.118e-11 | 1.667e-11 |
+| binary cross-entropy | 5.408e-11 | 3.847e-11 | 4.384e-11 | 6.223e-11 |
+| softmax cross-entropy | 4.052e-10 | 5.224e-11 | 8.435e-11 | 9.706e-11 |
+| three hidden layers, mixed | 7.503e-10 | 1.288e-10 | 1.913e-10 | 1.897e-10 |
+| ReLU hidden layers | 4.897e-10 | 1.203e-10 | 1.518e-10 | 1.637e-10 |
+
+The large gaps are on the 270-sample spiral, where the loss is a long sum. CPython's built-in
+`sum()` is compensated (Neumaier) since 3.12, and NumPy and Torch use pairwise or blocked
+reductions; all three accumulate less round-off than a naive left-to-right loop. Swapping in a
+naive sum moves the pure-Python softmax ratio to `4.102e-10`, next to C++'s `4.052e-10`. The best
+central step was again `epsilon = 1e-5` in every backend, with the expected 100x and 10x
+per-decade decay above it.
+
+Mini-batch shuffling uses Python's `random.Random(20260910)` rather than `std::shuffle`, whose
+output is not specified across C++ standard libraries, so training follows a different trajectory
+from C++. The three Python backends share that stream and printed identical training results:
+
+| Model | Parameters | Final loss | Train | Validation | Test |
+|---|---:|---:|---:|---:|---:|
+| majority baseline | — | — | — | — | 0.3333 |
+| linear softmax | 9 | 0.7942 | 0.5148 | 0.5333 | 0.5333 |
+| 2x16 tanh MLP | 371 | 0.0001 | 1.0000 | 1.0000 | 1.0000 |
+
+The trajectory checks (pure Python; NumPy and PyTorch agree within small factors in the
+round-off-dominated columns) reproduce the degeneracy documented above:
+
+| Point on the trajectory | Norm ratio | Max elementwise | Max absolute | Largest \|gradient\| |
+|---|---:|---:|---:|---:|
+| initialization | 1.157e-10 | 7.361e-08 | 1.707e-11 | 9.913e-02 |
+| after 20 epochs | 2.990e-11 | 5.815e-09 | 6.507e-12 | 1.460e-01 |
+| at convergence | 2.394e-07 | 1.755e-04 | 6.276e-12 | 1.941e-05 |
+
+At convergence the norm ratio again fails `1e-7` while the absolute disagreement, `6.276e-12`,
+is the smallest of the three points. No runtime comparison is claimed.
