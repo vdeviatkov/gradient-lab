@@ -144,3 +144,18 @@ def test_numpy_experiment_meets_criteria_and_matches_scalar_training():
     assert (result.mlp.train, result.mlp.validation, result.mlp.test) == (1, 1, 1)
     assert f"{result.trajectory[0].largest_gradient:.3e}" == "9.913e-02"
     assert not result.trajectory[2].result.passed  # The documented norm-ratio degeneracy.
+
+
+def test_checkpoints_match_the_scalar_files_byte_for_byte(tmp_path):
+    layers = (DenseLayer(2, 5, R), DenseLayer(5, 3))
+    network, scalar = FeedForwardNetwork(layers, SOFTMAX, 31), ScalarNetwork(layers, SOFTMAX, 31)
+    ours, theirs = tmp_path / "numpy.checkpoint", tmp_path / "scalar.checkpoint"
+    network.save(ours)
+    scalar.save(theirs)
+    assert ours.read_bytes() == theirs.read_bytes()
+    network.fit(SPIRAL.train[:40], NetworkTrainingConfig(max_epochs=5, batch_size=8))
+    network.save(ours)
+    restored = FeedForwardNetwork.load(ours)
+    assert type(restored) is FeedForwardNetwork and restored.layers == layers
+    np.testing.assert_array_equal(restored.parameters(), network.parameters())
+    assert ScalarNetwork.load(ours).parameters() == network.parameters().tolist()

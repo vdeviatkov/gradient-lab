@@ -96,7 +96,7 @@ class SoftmaxRegression:
         self._flat[:] = values
 
     def _prepare(self, dataset):
-        if not isinstance(dataset, (ByteImageDataset, _DenseDataset)):
+        if not isinstance(dataset, (ByteImageDataset, DenseDataset)):
             examples = list(dataset)
             if not examples:
                 raise ValueError("dataset must not be empty")
@@ -106,7 +106,7 @@ class SoftmaxRegression:
                 raise ValueError(f"expected {self.feature_count} finite features per sample")
             if y.dtype.kind not in "iu" or (y < 0).any():
                 raise ValueError("labels must be non-negative integers")
-            dataset = _DenseDataset(x, y.astype(np.int64))
+            dataset = DenseDataset(x, y.astype(np.int64))
         if dataset.feature_count != self.feature_count:
             raise ValueError("sample feature count does not match the model")
         if (dataset.labels >= self.class_count).any():
@@ -208,7 +208,7 @@ class SoftmaxRegression:
 
 
 @dataclass(frozen=True)
-class _DenseDataset:
+class DenseDataset:
     """Already-scaled float features, for small (features, label) inputs such as tests."""
 
     x: np.ndarray

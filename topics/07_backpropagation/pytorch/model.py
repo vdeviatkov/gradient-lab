@@ -4,6 +4,7 @@ import math
 import random
 
 import torch
+from ml_scratch.pure.backpropagation.checkpoint import load_checkpoint, save_checkpoint
 from ml_scratch.pure.backpropagation.model import (
     Activation,
     Loss,
@@ -96,6 +97,18 @@ class FeedForwardNetwork:
         if not torch.isfinite(values).all():
             raise ValueError("parameters must be finite")
         self._flat.copy_(values)  # In place, so the layer views stay attached.
+
+    def save(self, path):
+        """Write a text checkpoint in the C++ format, shared with the scalar model."""
+        save_checkpoint(path, self.layers, self.loss_function, self._flat.tolist())
+
+    @classmethod
+    def load(cls, path):
+        """Rebuild a network, of this class, from a Python or C++ checkpoint."""
+        layers, loss, values = load_checkpoint(path)
+        network = cls(layers, loss)
+        network.set_parameters(values)
+        return network
 
     def _validate(self, dataset):
         examples = list(dataset)

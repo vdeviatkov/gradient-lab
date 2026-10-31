@@ -174,3 +174,18 @@ def test_tensor_inputs_with_graphs_are_detached():
     assert not gradient.requires_grad and x.grad is None
     network.fit(data, NetworkTrainingConfig(max_epochs=3))
     assert not network._flat.requires_grad
+
+
+def test_checkpoints_match_the_scalar_files_byte_for_byte(tmp_path):
+    layers = (DenseLayer(2, 5, R), DenseLayer(5, 3))
+    network, scalar = FeedForwardNetwork(layers, SOFTMAX, 31), ScalarNetwork(layers, SOFTMAX, 31)
+    ours, theirs = tmp_path / "torch.checkpoint", tmp_path / "scalar.checkpoint"
+    network.save(ours)
+    scalar.save(theirs)
+    assert ours.read_bytes() == theirs.read_bytes()
+    network.fit(SPIRAL.train[:40], NetworkTrainingConfig(max_epochs=5, batch_size=8))
+    network.save(ours)
+    restored = FeedForwardNetwork.load(ours)
+    assert type(restored) is FeedForwardNetwork and restored.layers == layers
+    assert torch.equal(restored.parameters(), network.parameters())
+    assert ScalarNetwork.load(ours).parameters() == network.parameters().tolist()

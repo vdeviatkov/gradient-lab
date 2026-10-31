@@ -242,3 +242,60 @@ def test_random_architectures_check_out():
         ) + (DenseLayer(sizes[-2], 3),)
         network = FeedForwardNetwork(layers, SOFTMAX, seed=rng.randrange(2**32))
         assert check_network_gradient(network, THREE_CLASSES).relative_error < 1e-8
+
+
+def test_checkpoint_round_trips_exactly_in_the_cpp_format(tmp_path):
+    network = FeedForwardNetwork((DenseLayer(2, 4, R), DenseLayer(4, 3)), SOFTMAX, 77)
+    network.fit(THREE_CLASSES, NetworkTrainingConfig(learning_rate=0.2, max_epochs=50))
+    path = tmp_path / "network.checkpoint"
+    network.save(path)
+    restored = FeedForwardNetwork.load(path)
+    assert restored.layers == network.layers and restored.loss_function is SOFTMAX
+    # 17 significant digits reproduce every double exactly, not approximately.
+    assert restored.parameters() == network.parameters()
+    assert restored.loss(THREE_CLASSES) == network.loss(THREE_CLASSES)
+
+    # The exact text C++ writes for this network, from its std::setprecision(17) stream.
+    tiny = FeedForwardNetwork((DenseLayer(2, 1, T),), MSE)
+    tiny.set_parameters([0.1, -2.5, 1e-5])
+    tiny.save(path)
+    assert path.read_text() == (
+        "ml_scratch_feedforward 3\nloss 0\nlayers 1\n2 1 2 0 0 0\nparameters 3\n"
+        "0.10000000000000001\n-2.5\n1.0000000000000001e-05\nstatistics 0\n"
+    )
+
+
+def test_checkpoint_reads_older_versions_and_rejects_what_it_cannot_restore(tmp_path):
+    path = tmp_path / "network.checkpoint"
+    # Version 1 predates the normalization, dropout, and residual fields.
+    path.write_text("ml_scratch_feedforward 1\nloss 2\nlayers 1\n2 3 0\nparameters 9\n" + "1\n" * 9)
+    restored = FeedForwardNetwork.load(path)
+    assert restored.layers == (DenseLayer(2, 3),) and restored.parameters() == [1.0] * 9
+    path.write_text("ml_scratch_feedforward 2\nloss 0\nlayers 1\n1 1 3 0 0\nparameters 2\n2\n3\n"
+                    "statistics 0\n")  # fmt: skip
+    assert FeedForwardNetwork.load(path).parameters() == [2.0, 3.0]
+
+    layer = "ml_scratch_feedforward 3\nloss 2\nlayers 1\n2 3 {}\nparameters 9\n" + "0\n" * 9
+    for text in (
+        "something 1\n",
+        "ml_scratch_feedforward 4\nloss 2\n",
+        "ml_scratch_feedforward 1\nloss 7\n",
+        "ml_scratch_feedforward 1\nloss 2\nlayers 0\nparameters 0\n",
+        "ml_scratch_feedforward 1\nloss 2\nlayers 1\n2 3 0\nparameters 4\n1\n2\n3\n4\n",
+        "ml_scratch_feedforward 1\nloss 2\nlayers 1\n2 3 0\nparameters 9\n1\n2\n",
+        "ml_scratch_feedforward 1\nloss 2\nlayers 1\n2 3 0\nparameters 9\n" + "x\n" * 9,
+        "ml_scratch_feedforward 1\nloss 2\nlayers 1\n2 3 99\nparameters 9\n",
+        "ml_scratch_feedforward 1\nloss 2\nlayers 1\n2 -3 0\nparameters 9\n",
+        layer.format("4 0 0 0"),  # leaky rectifier
+        layer.format("0 1 0 0"),  # batch normalization
+        layer.format("0 0 0.5 0"),  # dropout
+        layer.format("0 0 0 1"),  # residual skip
+        layer.format("0 0 0 0") + "statistics 4\n",
+        layer.format("0 0 0 0") + "nan\n",
+        "ml_scratch_feedforward 1\nloss 2\nlayers 1\n2 1 0\nparameters 3\n1\ninf\n2\n",
+    ):
+        path.write_text(text)
+        with pytest.raises(ValueError):
+            FeedForwardNetwork.load(path)
+    with pytest.raises(FileNotFoundError):
+        FeedForwardNetwork.load(tmp_path / "missing.checkpoint")

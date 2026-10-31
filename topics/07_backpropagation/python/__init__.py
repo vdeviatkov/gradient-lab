@@ -1,5 +1,6 @@
 """From-scratch backpropagation for dense networks, verified by numerical gradient checks."""
 
+from .checkpoint import load_checkpoint, save_checkpoint
 from .gradient_check import (
     GradientCheckResult,
     check_gradient,
@@ -30,6 +31,8 @@ __all__ = [
     "check_network_gradient",
     "forward_difference_gradient",
     "initial_parameters",
+    "load_checkpoint",
     "mt19937",
     "numerical_gradient",
+    "save_checkpoint",
 ]

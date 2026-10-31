@@ -213,6 +213,22 @@ class FeedForwardNetwork:
             biases[:] = values[cursor : cursor + len(biases)]
             cursor += len(biases)
 
+    def save(self, path):
+        """Write a text checkpoint in the C++ format; see checkpoint.py."""
+        from .checkpoint import save_checkpoint  # checkpoint.py imports this module.
+
+        save_checkpoint(path, self.layers, self.loss_function, self.parameters())
+
+    @classmethod
+    def load(cls, path):
+        """Rebuild a network, of this class, from a Python or C++ checkpoint."""
+        from .checkpoint import load_checkpoint
+
+        layers, loss, values = load_checkpoint(path)
+        network = cls(layers, loss)
+        network.set_parameters(values)
+        return network
+
     def _vector(self, features):
         row = [float(value) for value in features]
         if len(row) != self.input_size or not all(math.isfinite(value) for value in row):

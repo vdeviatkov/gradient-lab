@@ -38,6 +38,7 @@ ml-decision-tree = "ml_scratch.pure.decision_tree.experiment:main"
 ml-pca-kmeans = "ml_scratch.pure.pca_kmeans.experiment:main"
 ml-backpropagation = "ml_scratch.pure.backpropagation.experiment:main"
 ml-softmax-mnist = "ml_scratch.pure.softmax_mnist.experiment:main"
+ml-mlp-mnist = "ml_scratch.pure.mlp_mnist.experiment:main"
 
 ml-numpy-perceptron = "ml_scratch.numpy.perceptron.experiment:main"
 ml-numpy-mlp = "ml_scratch.numpy.mlp.experiment:main"
@@ -47,6 +48,7 @@ ml-numpy-pca-kmeans = "ml_scratch.numpy.pca_kmeans.experiment:main"
 ml-numpy-decision-tree = "ml_scratch.numpy.decision_tree.experiment:main"
 ml-numpy-backpropagation = "ml_scratch.numpy.backpropagation.experiment:main"
 ml-numpy-softmax-mnist = "ml_scratch.numpy.softmax_mnist.experiment:main"
+ml-numpy-mlp-mnist = "ml_scratch.numpy.mlp_mnist.experiment:main"
 
 ml-pytorch-perceptron = "ml_scratch.pytorch.perceptron.experiment:main"
 ml-pytorch-mlp = "ml_scratch.pytorch.mlp.experiment:main"
@@ -56,8 +58,10 @@ ml-pytorch-pca-kmeans = "ml_scratch.pytorch.pca_kmeans.experiment:main"
 ml-pytorch-decision-tree = "ml_scratch.pytorch.decision_tree.experiment:main"
 ml-pytorch-backpropagation = "ml_scratch.pytorch.backpropagation.experiment:main"
 ml-pytorch-softmax-mnist = "ml_scratch.pytorch.softmax_mnist.experiment:main"
+ml-pytorch-mlp-mnist = "ml_scratch.pytorch.mlp_mnist.experiment:main"
 
 ml-triton-softmax-mnist = "ml_scratch.triton.softmax_mnist.experiment:main"
+ml-triton-mlp-mnist = "ml_scratch.triton.mlp_mnist.experiment:main"
 
 [tool.setuptools]
 packages = [
@@ -67,6 +71,7 @@ packages = [
   "ml_scratch.pytorch",
   "ml_scratch.triton",
   "ml_scratch.triton.softmax_mnist",
+  "ml_scratch.triton.mlp_mnist",
   "ml_scratch.pytorch.perceptron",
   "ml_scratch.pytorch.mlp",
   "ml_scratch.pytorch.linear_regression",
@@ -75,6 +80,7 @@ packages = [
   "ml_scratch.pytorch.decision_tree",
   "ml_scratch.pytorch.backpropagation",
   "ml_scratch.pytorch.softmax_mnist",
+  "ml_scratch.pytorch.mlp_mnist",
   "ml_scratch.numpy.perceptron",
   "ml_scratch.numpy.mlp",
   "ml_scratch.numpy.linear_regression",
@@ -83,6 +89,7 @@ packages = [
   "ml_scratch.numpy.decision_tree",
   "ml_scratch.numpy.backpropagation",
   "ml_scratch.numpy.softmax_mnist",
+  "ml_scratch.numpy.mlp_mnist",
   "ml_scratch.pure.perceptron",
   "ml_scratch.pure.mlp",
   "ml_scratch.pure.linear_regression",
@@ -91,6 +98,7 @@ packages = [
   "ml_scratch.pure.decision_tree",
   "ml_scratch.pure.backpropagation",
   "ml_scratch.pure.softmax_mnist",
+  "ml_scratch.pure.mlp_mnist",
 ]
 
 [tool.setuptools.package-dir]
@@ -100,6 +108,7 @@ packages = [
 "ml_scratch.pytorch" = "shared/python/ml_scratch/pytorch"
 "ml_scratch.triton" = "shared/python/ml_scratch/triton"
 "ml_scratch.triton.softmax_mnist" = "topics/08_softmax_mnist/triton"
+"ml_scratch.triton.mlp_mnist" = "topics/09_mlp_mnist/triton"
 "ml_scratch.pytorch.perceptron" = "topics/01_perceptron_logic_gates/pytorch"
 "ml_scratch.pytorch.mlp" = "topics/02_xor_mlp/pytorch"
 "ml_scratch.pytorch.linear_regression" = "topics/03_linear_regression/pytorch"
@@ -108,6 +117,7 @@ packages = [
 "ml_scratch.pytorch.decision_tree" = "topics/06_decision_tree/pytorch"
 "ml_scratch.pytorch.backpropagation" = "topics/07_backpropagation/pytorch"
 "ml_scratch.pytorch.softmax_mnist" = "topics/08_softmax_mnist/pytorch"
+"ml_scratch.pytorch.mlp_mnist" = "topics/09_mlp_mnist/pytorch"
 "ml_scratch.numpy.perceptron" = "topics/01_perceptron_logic_gates/numpy"
 "ml_scratch.numpy.mlp" = "topics/02_xor_mlp/numpy"
 "ml_scratch.numpy.linear_regression" = "topics/03_linear_regression/numpy"
@@ -116,6 +126,7 @@ packages = [
 "ml_scratch.numpy.decision_tree" = "topics/06_decision_tree/numpy"
 "ml_scratch.numpy.backpropagation" = "topics/07_backpropagation/numpy"
 "ml_scratch.numpy.softmax_mnist" = "topics/08_softmax_mnist/numpy"
+"ml_scratch.numpy.mlp_mnist" = "topics/09_mlp_mnist/numpy"
 "ml_scratch.pure.perceptron" = "topics/01_perceptron_logic_gates/python"
 "ml_scratch.pure.mlp" = "topics/02_xor_mlp/python"
 "ml_scratch.pure.linear_regression" = "topics/03_linear_regression/python"
@@ -124,6 +135,7 @@ packages = [
 "ml_scratch.pure.decision_tree" = "topics/06_decision_tree/python"
 "ml_scratch.pure.backpropagation" = "topics/07_backpropagation/python"
 "ml_scratch.pure.softmax_mnist" = "topics/08_softmax_mnist/python"
+"ml_scratch.pure.mlp_mnist" = "topics/09_mlp_mnist/python"
 
 [tool.pytest.ini_options]
 addopts = "-ra"
